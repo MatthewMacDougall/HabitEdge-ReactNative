@@ -2,20 +2,12 @@ export interface UserRegistration {
   name: string
   email: string
   password: string
-  dob: string
+  dob: Date
   sport: string
 }
 
 export interface UserPreferences {
-  sport: string
-  experience: 'beginner' | 'intermediate' | 'advanced'
-  trainingDays: number
   notifications: boolean
-  goals: {
-    performance?: string
-    training?: string
-    habit?: string
-  }
 }
 
 export interface OnboardingStep {

@@ -3,19 +3,22 @@ import {
   View,
   ScrollView,
   StyleSheet,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native'
 import {
   Text,
   Card,
   Button,
-  IconButton
+  IconButton,
+  Surface
 } from 'react-native-paper'
 import { useRouter } from 'expo-router'
 import { LineChart } from 'react-native-chart-kit'
-import { Colors } from '../constants/Colors'
-import { getStreakStats } from '../utils/streakCalculator'
+import { Colors } from '@/constants/Colors'
+import { getStreakStats } from '@/utils/streakCalculator'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { SharedStyles } from '@/constants/Styles'
 
 // Mock data - replace with actual API calls
 const mockJournalEntries = [
@@ -50,56 +53,66 @@ export default function DashboardScreen() {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
       data: [7, 8, 6, 9, 7, 8, 8],
-      color: () => Colors.light.primary
+      color: () => Colors.dark.primary,
+      strokeWidth: 2
     }]
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium">Dashboard</Text>
+    <ScrollView 
+      style={SharedStyles.screenContainer}
+      contentContainerStyle={SharedStyles.contentContainer}
+    >
+      <View style={styles.headerContainer}>
+        <Text variant="headlineMedium" style={styles.headerTitle}>Dashboard</Text>
         <Button
           mode="contained"
           onPress={() => router.push('/(tabs)/journal')}
           icon="plus"
+          style={styles.newEntryButton}
+          labelStyle={styles.buttonLabel}
         >
           New Entry
         </Button>
       </View>
 
-      <View style={styles.statsContainer}>
-        <Card style={[styles.statCard, { backgroundColor: Colors.light.primary }]}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.statLabel}>Current Streak</Text>
-            <Text variant="headlineLarge" style={styles.statValue}>{streak} days</Text>
-            <MaterialCommunityIcons name="fire" size={24} color={Colors.light.background} />
-          </Card.Content>
-        </Card>
+      <View style={styles.statsGrid}>
+        <Surface style={[styles.statCard, { backgroundColor: Colors.dark.primary }]}>
+          <MaterialCommunityIcons name="fire" size={32} color={Colors.dark.text} style={styles.statIcon} />
+          <Text variant="titleMedium" style={styles.statLabel}>Current Streak</Text>
+          <Text variant="headlineLarge" style={styles.statValue}>{streak}</Text>
+          <Text style={styles.statUnit}>days</Text>
+        </Surface>
 
-        <Card style={[styles.statCard, { backgroundColor: Colors.light.secondary }]}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.statLabel}>Weekly Entries</Text>
-            <Text variant="headlineLarge" style={styles.statValue}>{recentEntries.length}</Text>
-            <MaterialCommunityIcons name="calendar-check" size={24} color={Colors.light.background} />
-          </Card.Content>
-        </Card>
+        <Surface style={[styles.statCard, { backgroundColor: Colors.dark.secondary }]}>
+          <MaterialCommunityIcons name="calendar-check" size={32} color={Colors.dark.text} style={styles.statIcon} />
+          <Text variant="titleMedium" style={styles.statLabel}>Weekly Entries</Text>
+          <Text variant="headlineLarge" style={styles.statValue}>{recentEntries.length}</Text>
+          <Text style={styles.statUnit}>entries</Text>
+        </Surface>
       </View>
 
-      <Card style={styles.chartCard}>
-        <Card.Title title="Performance Trend" />
+      <Card style={[SharedStyles.card, styles.chartCard]}>
         <Card.Content>
+          <Text variant="titleLarge" style={styles.chartTitle}>Performance Trend</Text>
           <LineChart
             data={chartData}
             width={Dimensions.get('window').width - 48}
             height={220}
             chartConfig={{
-              backgroundColor: Colors.light.card,
-              backgroundGradientFrom: Colors.light.card,
-              backgroundGradientTo: Colors.light.card,
+              backgroundColor: Colors.dark.card,
+              backgroundGradientFrom: Colors.dark.card,
+              backgroundGradientTo: Colors.dark.card,
               decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(255, 40, 40, ${opacity})`,
+              color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
+              labelColor: () => Colors.dark.text,
               style: {
                 borderRadius: 16
+              },
+              propsForDots: {
+                r: "6",
+                strokeWidth: "2",
+                stroke: Colors.dark.primary
               }
             }}
             bezier
@@ -108,22 +121,24 @@ export default function DashboardScreen() {
         </Card.Content>
       </Card>
 
-      <Card style={styles.entriesCard}>
+      <Card style={SharedStyles.card}>
         <Card.Title 
           title="Recent Entries"
+          titleStyle={styles.cardTitle}
           right={(props) => (
             <IconButton
               {...props}
               icon="chevron-right"
-              onPress={() => router.push('/(tabs)/entries')}
+              iconColor={Colors.dark.primary}
+              onPress={() => router.push('/entries')}
             />
           )}
         />
         <Card.Content>
           {recentEntries.map(entry => (
-            <View key={entry.id} style={styles.entryItem}>
+            <Surface key={entry.id} style={styles.entryItem}>
               <View>
-                <Text variant="titleMedium">{entry.title}</Text>
+                <Text variant="titleMedium" style={styles.entryTitle}>{entry.title}</Text>
                 <Text variant="bodySmall" style={styles.entryDate}>
                   {new Date(entry.timestamp).toLocaleDateString()}
                 </Text>
@@ -135,7 +150,7 @@ export default function DashboardScreen() {
                   </Text>
                 ))}
               </View>
-            </View>
+            </Surface>
           ))}
         </Card.Content>
       </Card>
@@ -144,61 +159,100 @@ export default function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-    padding: 16
-  },
-  header: {
+  headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: 24,
   },
-  statsContainer: {
+  headerTitle: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+  },
+  newEntryButton: {
+    backgroundColor: Colors.dark.primary,
+    borderRadius: 8,
+  },
+  buttonLabel: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+  },
+  statsGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16
+    gap: 16,
+    marginBottom: 24,
   },
   statCard: {
     flex: 1,
-    borderRadius: 12
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  statIcon: {
+    marginBottom: 8,
   },
   statLabel: {
-    color: Colors.light.background,
-    opacity: 0.9
+    color: Colors.dark.text,
+    opacity: 0.9,
+    textAlign: 'center',
   },
   statValue: {
-    color: Colors.light.background,
-    marginVertical: 4
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  statUnit: {
+    color: Colors.dark.text,
+    opacity: 0.8,
+    fontSize: 12,
   },
   chartCard: {
+    marginBottom: 24,
+  },
+  chartTitle: {
+    color: Colors.dark.text,
     marginBottom: 16,
-    borderRadius: 12
+    fontWeight: 'bold',
   },
   chart: {
     marginVertical: 8,
-    borderRadius: 16
+    borderRadius: 16,
   },
-  entriesCard: {
-    marginBottom: 16,
-    borderRadius: 12
+  cardTitle: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
   },
   entryItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border
+    padding: 12,
+    marginBottom: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.dark.input,
+  },
+  entryTitle: {
+    color: Colors.dark.text,
+    fontWeight: '500',
   },
   entryDate: {
-    color: Colors.light.textSecondary
+    color: Colors.dark.textSecondary,
   },
   metrics: {
-    alignItems: 'flex-end'
+    alignItems: 'flex-end',
   },
   metric: {
-    color: Colors.light.textSecondary
-  }
+    color: Colors.dark.textSecondary,
+  },
 }) 

@@ -4,25 +4,29 @@ import {
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  TouchableOpacity,
+  Modal
 } from 'react-native'
 import {
   Text,
   Button,
   TextInput,
-  Card,
+  Portal,
+  SegmentedButtons,
   ProgressBar,
-  HelperText
+  Surface
 } from 'react-native-paper'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Colors } from '../constants/Colors'
-import { sports } from '../config/sports'
-import { UserRegistration, OnboardingStep } from '../types/onboarding'
+import { sports } from '@/config/sports'
+import { UserRegistration, OnboardingStep } from '@/types/onboarding'
 import Toast from 'react-native-toast-message'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { format } from 'date-fns'
-import { Sport } from '../types/sports'
+import { Sport } from '@/types/sports'
+import { SharedStyles } from '@/constants/Styles'
 
 const STEPS: OnboardingStep[] = [
   {
@@ -55,11 +59,12 @@ export default function OnboardingScreen() {
     name: '',
     email: '',
     password: '',
-    dob: new Date().toISOString(),
+    dob: new Date(),
     sport: ''
   })
   const [errors, setErrors] = useState<Partial<Record<keyof UserRegistration, string>>>({})
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [customSport, setCustomSport] = useState('')
 
   const validateEmail = (email: string) => {
     return EMAIL_REGEX.test(email)
@@ -86,6 +91,8 @@ export default function OnboardingScreen() {
       case 1: // Sport Selection
         if (!registration.sport) {
           newErrors.sport = 'Please select a sport'
+        } else if (registration.sport === 'other' && !customSport.trim()) {
+          newErrors.sport = 'Please enter your sport'
         }
         break
 
@@ -148,153 +155,23 @@ export default function OnboardingScreen() {
     }
   }
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 0:
-        return (
-          <View style={styles.step}>
-            <TextInput
-              label="Full Name"
-              value={registration.name}
-              onChangeText={(value) => {
-                setRegistration(prev => ({ ...prev, name: value }))
-                setErrors(prev => ({ ...prev, name: undefined }))
-              }}
-              error={!!errors.name}
-              style={styles.input}
-            />
-            <HelperText type="error" visible={!!errors.name}>
-              {errors.name}
-            </HelperText>
-
-            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-              <TextInput
-                label="Date of Birth"
-                value={format(new Date(registration.dob), 'MMM d, yyyy')}
-                editable={false}
-                error={!!errors.dob}
-                right={<TextInput.Icon icon="calendar" />}
-                style={styles.input}
-              />
-            </TouchableOpacity>
-            <HelperText type="error" visible={!!errors.dob}>
-              {errors.dob}
-            </HelperText>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={new Date(registration.dob)}
-                mode="date"
-                maximumDate={new Date()}
-                onChange={(event, date) => {
-                  setShowDatePicker(false)
-                  if (date) {
-                    setRegistration(prev => ({ ...prev, dob: date.toISOString() }))
-                    setErrors(prev => ({ ...prev, dob: undefined }))
-                  }
-                }}
-              />
-            )}
-          </View>
-        )
-
-      case 1:
-        return (
-          <View style={styles.step}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.sportsContainer}>
-                {sports.map((sport: Sport) => (
-                  <Card
-                    key={sport.id}
-                    style={[
-                      styles.sportCard,
-                      registration.sport === sport.id && styles.selectedSportCard
-                    ]}
-                    onPress={() => {
-                      setRegistration(prev => ({ ...prev, sport: sport.id }))
-                      setErrors(prev => ({ ...prev, sport: undefined }))
-                    }}
-                  >
-                    <Card.Content>
-                      <Text
-                        style={[
-                          styles.sportText,
-                          registration.sport === sport.id && styles.selectedSportText
-                        ]}
-                      >
-                        {sport.name}
-                      </Text>
-                    </Card.Content>
-                  </Card>
-                ))}
-              </View>
-            </ScrollView>
-            <HelperText type="error" visible={!!errors.sport}>
-              {errors.sport}
-            </HelperText>
-          </View>
-        )
-
-      case 2:
-        return (
-          <View style={styles.step}>
-            <TextInput
-              label="Email"
-              value={registration.email}
-              onChangeText={(value) => {
-                setRegistration(prev => ({ ...prev, email: value }))
-                setErrors(prev => ({ ...prev, email: undefined }))
-              }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={!!errors.email}
-              style={styles.input}
-            />
-            <HelperText type="error" visible={!!errors.email}>
-              {errors.email}
-            </HelperText>
-
-            <TextInput
-              label="Password"
-              value={registration.password}
-              onChangeText={(value) => {
-                setRegistration(prev => ({ ...prev, password: value }))
-                setErrors(prev => ({ ...prev, password: undefined }))
-              }}
-              secureTextEntry
-              error={!!errors.password}
-              style={styles.input}
-            />
-            <HelperText type="error" visible={!!errors.password}>
-              {errors.password}
-            </HelperText>
-
-            <TextInput
-              label="Confirm Password"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              error={!!errors.password}
-              style={styles.input}
-            />
-          </View>
-        )
-    }
-  }
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={SharedStyles.screenContainer}
     >
       <View style={styles.progress}>
         <ProgressBar
           progress={(currentStep + 1) / STEPS.length}
-          color={Colors.light.primary}
+          color={Colors.dark.primary}
+          style={styles.progressBar}
         />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={SharedStyles.contentContainer}
+      >
         <Text variant="headlineMedium" style={styles.title}>
           {STEPS[currentStep].title}
         </Text>
@@ -302,12 +179,175 @@ export default function OnboardingScreen() {
           {STEPS[currentStep].description}
         </Text>
 
-        {renderStep()}
+        <Surface style={styles.formContainer}>
+          {currentStep === 0 && (
+            <View style={styles.step}>
+              <TextInput
+                label="Full Name"
+                value={registration.name}
+                onChangeText={(value) => {
+                  setRegistration(prev => ({ ...prev, name: value }))
+                  setErrors(prev => ({ ...prev, name: undefined }))
+                }}
+                error={!!errors.name}
+                style={styles.input}
+                theme={{ colors: { text: Colors.dark.text } }}
+              />
+              {errors.name && (
+                <Text style={styles.errorText}>{errors.name}</Text>
+              )}
+
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+              >
+                <TextInput
+                  label="Date of Birth"
+                  value={format(new Date(registration.dob), 'MMM d, yyyy')}
+                  editable={false}
+                  error={!!errors.dob}
+                  right={<TextInput.Icon icon="calendar" />}
+                  style={styles.input}
+                />
+              </TouchableOpacity>
+
+              {Platform.OS === 'ios' ? (
+                <Modal
+                  visible={showDatePicker}
+                  transparent={true}
+                  animationType="slide"
+                >
+                  <View style={styles.centeredView}>
+                    <View style={styles.modalView}>
+                      <DateTimePicker
+                        value={new Date(registration.dob)}
+                        mode="date"
+                        display="spinner"
+                        onChange={(event, date) => {
+                          setShowDatePicker(false)
+                          if (date) {
+                            setRegistration(prev => ({ ...prev, dob: date }))
+                            setErrors(prev => ({ ...prev, dob: undefined }))
+                          }
+                        }}
+                      />
+                      <Button onPress={() => setShowDatePicker(false)}>
+                        Done
+                      </Button>
+                    </View>
+                  </View>
+                </Modal>
+              ) : (
+                showDatePicker && (
+                  <DateTimePicker
+                    value={new Date(registration.dob)}
+                    mode="date"
+                    onChange={(event, date) => {
+                      setShowDatePicker(false)
+                      if (date && event.type !== 'dismissed') {
+                        setRegistration(prev => ({ ...prev, dob: date }))
+                        setErrors(prev => ({ ...prev, dob: undefined }))
+                      }
+                    }}
+                  />
+                )
+              )}
+
+              {errors.dob && (
+                <Text style={styles.errorText}>{errors.dob}</Text>
+              )}
+            </View>
+          )}
+
+          {currentStep === 1 && (
+            <View style={styles.step}>
+              <SegmentedButtons
+                value={registration.sport}
+                onValueChange={(value) => {
+                  setRegistration(prev => ({ ...prev, sport: value }));
+                  setErrors(prev => ({ ...prev, sport: undefined }));
+                  if (value !== 'other') {
+                    setCustomSport('');
+                  }
+                }}
+                buttons={sports.map(sport => ({
+                  value: sport.id,
+                  label: sport.name,
+                  style: styles.sportButton
+                }))}
+              />
+              
+              {registration.sport === 'other' && (
+                <TextInput
+                  label="Enter your sport"
+                  value={customSport}
+                  onChangeText={(value) => {
+                    setCustomSport(value);
+                    setRegistration(prev => ({ ...prev, sport: value }));
+                  }}
+                  style={styles.input}
+                />
+              )}
+              
+              {errors.sport && (
+                <Text style={styles.errorText}>{errors.sport}</Text>
+              )}
+            </View>
+          )}
+
+          {currentStep === 2 && (
+            <View style={styles.step}>
+              <TextInput
+                label="Email"
+                value={registration.email}
+                onChangeText={(value) => {
+                  setRegistration(prev => ({ ...prev, email: value }))
+                  setErrors(prev => ({ ...prev, email: undefined }))
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={!!errors.email}
+                style={styles.input}
+              />
+              {errors.email && (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              )}
+
+              <TextInput
+                label="Password"
+                value={registration.password}
+                onChangeText={(value) => {
+                  setRegistration(prev => ({ ...prev, password: value }))
+                  setErrors(prev => ({ ...prev, password: undefined }))
+                }}
+                secureTextEntry
+                error={!!errors.password}
+                style={styles.input}
+              />
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
+
+              <TextInput
+                label="Confirm Password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                error={!!errors.password}
+                style={styles.input}
+              />
+            </View>
+          )}
+        </Surface>
       </ScrollView>
 
       <View style={styles.buttons}>
         {currentStep > 0 && (
-          <Button mode="outlined" onPress={handleBack} style={styles.button}>
+          <Button
+            mode="outlined"
+            onPress={handleBack}
+            style={styles.button}
+            textColor={Colors.dark.text}
+          >
             Back
           </Button>
         )}
@@ -324,60 +364,103 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background
-  },
   progress: {
-    padding: 16
+    padding: 16,
+  },
+  progressBar: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.dark.border,
   },
   content: {
     flex: 1,
-    padding: 16
   },
   title: {
-    marginBottom: 8
+    color: Colors.dark.text,
+    marginBottom: 8,
+    fontWeight: 'bold',
   },
   description: {
-    color: Colors.light.textSecondary,
-    marginBottom: 24
+    color: Colors.dark.textSecondary,
+    marginBottom: 24,
+  },
+  formContainer: {
+    backgroundColor: Colors.dark.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
   },
   step: {
-    marginBottom: 24
+    gap: 16,
   },
-  stepTitle: {
-    marginBottom: 16
+  input: {
+    backgroundColor: Colors.dark.input,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: Colors.dark.error,
+    fontSize: 12,
+    marginTop: -4,
+    marginBottom: 8,
   },
   sportsContainer: {
     flexDirection: 'row',
     gap: 12,
-    paddingVertical: 8
+    padding: 8,
   },
   sportCard: {
     width: 120,
-    marginRight: 8
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: Colors.dark.input,
   },
   selectedSportCard: {
-    backgroundColor: Colors.light.primary
+    backgroundColor: Colors.dark.primary,
   },
   sportText: {
-    textAlign: 'center'
+    color: Colors.dark.text,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   selectedSportText: {
-    color: Colors.light.background
-  },
-  input: {
-    marginBottom: 4
+    color: Colors.dark.background,
   },
   buttons: {
     flexDirection: 'row',
     padding: 16,
-    gap: 12
+    gap: 12,
+    backgroundColor: Colors.dark.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.dark.border,
   },
   button: {
-    flex: 1
+    flex: 1,
   },
   nextButton: {
-    backgroundColor: Colors.light.primary
-  }
+    backgroundColor: Colors.dark.primary,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalView: {
+    backgroundColor: Colors.dark.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5
+  },
+  sportButton: {
+    backgroundColor: Colors.dark.input,
+    borderColor: Colors.dark.border,
+  },
 }) 

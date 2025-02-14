@@ -5,7 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native'
 import {
   Text,
@@ -16,7 +17,8 @@ import {
   Modal,
   SegmentedButtons,
   IconButton,
-  Divider
+  Divider,
+  Surface
 } from 'react-native-paper'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { format } from 'date-fns'
@@ -25,6 +27,8 @@ import { Goal } from '../types/goals'
 import Toast from 'react-native-toast-message'
 import { saveGoals, loadGoals } from '../utils/storage'
 import { useFocusEffect } from '@react-navigation/native'
+import { SharedStyles } from '@/constants/Styles'
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
 
 export default function GoalsScreen() {
   const [goals, setGoals] = useState<Goal[]>([])
@@ -183,13 +187,15 @@ export default function GoalsScreen() {
   })
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium">Goals</Text>
+    <View style={SharedStyles.screenContainer}>
+      <View style={styles.headerContainer}>
+        <Text variant="headlineMedium" style={styles.headerTitle}>Goals</Text>
         <Button
           mode="contained"
           onPress={() => setShowModal(true)}
           icon="plus"
+          style={styles.addButton}
+          labelStyle={styles.buttonLabel}
         >
           Add Goal
         </Button>
@@ -208,31 +214,41 @@ export default function GoalsScreen() {
 
       <ScrollView 
         style={styles.goalsList}
+        contentContainerStyle={SharedStyles.contentContainer}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
+            tintColor={Colors.dark.primary}
           />
         }
       >
         {loading ? (
-          <ActivityIndicator size="large" color={Colors.light.primary} />
+          <ActivityIndicator size="large" color={Colors.dark.primary} />
         ) : goals.length === 0 ? (
-          <View style={styles.emptyState}>
+          <Surface style={styles.emptyState}>
+            <MaterialCommunityIcons 
+              name="target" 
+              size={48} 
+              color={Colors.dark.textSecondary} 
+            />
             <Text style={styles.emptyStateText}>
               No goals yet. Tap the "Add Goal" button to create your first goal!
             </Text>
-          </View>
+          </Surface>
         ) : (
           filteredGoals.map(goal => (
-            <Card key={goal.id} style={styles.goalCard}>
+            <Card key={goal.id} style={[SharedStyles.card, styles.goalCard]}>
               <Card.Title
                 title={goal.title}
+                titleStyle={styles.goalTitle}
                 subtitle={`${getDaysRemaining(goal.deadline)} days remaining`}
+                subtitleStyle={styles.goalSubtitle}
                 right={(props) => (
                   <IconButton
                     {...props}
                     icon="delete"
+                    iconColor={Colors.dark.error}
                     onPress={() => deleteGoal(goal.id)}
                   />
                 )}
@@ -259,12 +275,14 @@ export default function GoalsScreen() {
                     keyboardType="numeric"
                     value={String(goal.current)}
                     onChangeText={(value) => updateProgress(goal.id, Number(value))}
-                    style={styles.progressInput}
+                    style={[SharedStyles.input, styles.progressInput]}
+                    theme={{ colors: { text: Colors.dark.text } }}
                   />
                 ) : (
                   <Button
                     mode={goal.completed ? "contained" : "outlined"}
                     onPress={() => toggleComplete(goal.id)}
+                    style={styles.completeButton}
                   >
                     {goal.completed ? "Completed" : "Mark Complete"}
                   </Button>
@@ -279,7 +297,7 @@ export default function GoalsScreen() {
         <Modal
           visible={showModal}
           onDismiss={() => setShowModal(false)}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={[styles.modal, { backgroundColor: Colors.dark.card }]}
         >
           <Text variant="titleLarge" style={styles.modalTitle}>New Goal</Text>
           <TextInput
@@ -369,57 +387,99 @@ export default function GoalsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-    padding: 16
-  },
-  header: {
+  headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    padding: 16,
+  },
+  headerTitle: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
+  },
+  addButton: {
+    backgroundColor: Colors.dark.primary,
+    borderRadius: 8,
+  },
+  buttonLabel: {
+    color: Colors.dark.text,
   },
   filterButtons: {
-    marginBottom: 16
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
   goalsList: {
-    flex: 1
+    flex: 1,
   },
   goalCard: {
     marginBottom: 12,
-    borderRadius: 12
+  },
+  goalTitle: {
+    color: Colors.dark.text,
+    fontWeight: '600',
+  },
+  goalSubtitle: {
+    color: Colors.dark.textSecondary,
   },
   progressContainer: {
-    marginVertical: 8
+    marginVertical: 12,
   },
   progressBar: {
     height: 8,
-    backgroundColor: Colors.light.border,
+    backgroundColor: Colors.dark.border,
     borderRadius: 4,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.light.primary,
-    borderRadius: 4
+    backgroundColor: Colors.dark.primary,
+    borderRadius: 4,
   },
   progressText: {
     marginTop: 4,
     textAlign: 'right',
-    color: Colors.light.textSecondary
+    color: Colors.dark.textSecondary,
   },
   progressInput: {
-    marginTop: 8
+    marginTop: 8,
+    backgroundColor: Colors.dark.input,
+  },
+  completeButton: {
+    marginTop: 8,
+  },
+  emptyState: {
+    margin: 24,
+    padding: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    backgroundColor: Colors.dark.card,
+  },
+  emptyStateText: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: Colors.dark.textSecondary,
+    fontSize: 16,
   },
   modal: {
-    backgroundColor: Colors.light.background,
-    padding: 20,
     margin: 20,
-    borderRadius: 12
+    padding: 20,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
   },
   modalTitle: {
-    marginBottom: 16
+    color: Colors.dark.text,
+    marginBottom: 16,
+    fontWeight: 'bold',
   },
   input: {
     marginBottom: 12
@@ -443,16 +503,4 @@ const styles = StyleSheet.create({
   modalButton: {
     minWidth: 100
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    marginTop: 40
-  },
-  emptyStateText: {
-    textAlign: 'center',
-    color: Colors.light.textSecondary,
-    fontSize: 16
-  }
 }) 

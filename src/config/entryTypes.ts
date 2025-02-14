@@ -1,68 +1,80 @@
-export type EntryType = 'game' | 'practice' | 'workout' | 'film' | 'rest'
+export type EntryType = 'game' | 'practice' | 'workout' | 'film';
 
 export interface GameDetails {
-  opponent: string
-  result: 'win' | 'loss' | 'draw'
-  score?: string
+  opponent?: string;
+  result?: 'win' | 'loss' | 'draw';
+  score?: string;
 }
 
-export interface GradingMetric {
-  id: string
-  label: string
-  description: string
-  min: number
-  max: number
+export interface Metric {
+  id: string;
+  label: string;
+  description: string;
+  min: number;
+  max: number;
 }
 
-export interface JournalPrompt {
-  id: string
-  label: string
-  placeholder: string
-  required?: boolean
+export interface Prompt {
+  id: string;
+  label: string;
+  placeholder: string;
+  required?: boolean;
 }
 
-export interface EntryTypeConfig {
-  label: string
-  metrics: GradingMetric[]
-  prompts: JournalPrompt[]
-  additionalFields?: {
-    game?: {
-      opponent: boolean
-      result: boolean
-      score: boolean
-    }
+interface EntryTypeConfig {
+  label: string;
+  metrics: Metric[];
+  prompts: Prompt[];
+}
+
+// Common metrics shared across all entry types
+const commonMetrics: Metric[] = [
+  {
+    id: 'overallRating',
+    label: 'Overall Rating',
+    description: 'Rate your overall performance',
+    min: 1,
+    max: 10
+  },
+  {
+    id: 'energy',
+    label: 'Energy Level',
+    description: 'How was your energy throughout?',
+    min: 1,
+    max: 10
+  },
+  {
+    id: 'mentalFocus',
+    label: 'Mental Focus',
+    description: 'How focused were you?',
+    min: 1,
+    max: 10
+  },
+  {
+    id: 'effortLevel',
+    label: 'Effort Level',
+    description: 'How would you rate your effort level?',
+    min: 1,
+    max: 10
   }
-}
+];
 
 export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
   game: {
     label: 'Game',
-    additionalFields: {
-      game: {
-        opponent: true,
-        result: true,
-        score: true
-      }
-    },
     metrics: [
-      {
-        id: 'performance',
-        label: 'Overall Performance',
-        description: 'How would you rate your overall game performance?',
-        min: 1,
-        max: 10
-      },
-      {
-        id: 'energy',
-        label: 'Energy Level',
-        description: 'How was your energy throughout the game?',
-        min: 1,
-        max: 10
-      },
+      ...commonMetrics,
       {
         id: 'teamwork',
-        label: 'Team Collaboration',
+        label: 'Teamwork',
         description: 'How well did you work with your teammates?',
+        min: 1,
+        max: 10
+      },
+      {
+        id: 'performance',
+        label: 'Performance',
+        description: 'Rate your individual performance',
         min: 1,
         max: 10
       }
@@ -71,77 +83,65 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
       {
         id: 'highlights',
         label: 'Key Highlights',
-        placeholder: 'What were your best plays or moments?',
+        placeholder: 'What were your best moments in the game?',
         required: true
       },
       {
         id: 'improvements',
         label: 'Areas for Improvement',
-        placeholder: 'What aspects of your game need work?',
+        placeholder: 'What could you have done better?',
         required: true
       },
       {
-        id: 'coachFeedback',
-        label: 'Coach Feedback',
-        placeholder: 'What feedback did you receive from coaches?'
+        id: 'learnings',
+        label: 'Key Learnings',
+        placeholder: 'What did you learn from this game?'
       }
     ]
   },
   practice: {
     label: 'Practice',
     metrics: [
+      ...commonMetrics,
       {
-        id: 'duration',
-        label: 'Duration',
-        description: 'How long did you practice?',
-        min: 0,
-        max: 120
+        id: 'skillProgress',
+        label: 'Skill Progress',
+        description: 'How much did you improve your skills?',
+        min: 1,
+        max: 10
       },
       {
-        id: 'improvement',
-        label: 'Improvement',
-        description: 'How much did you improve?',
-        min: 0,
-        max: 100
-      },
-      {
-        id: 'technique',
-        label: 'Technique',
-        description: 'How well did you execute your techniques?',
+        id: 'effort',
+        label: 'Effort Level',
+        description: 'How much effort did you put in?',
         min: 1,
         max: 10
       }
     ],
     prompts: [
       {
-        id: 'goals',
-        label: 'Goals',
-        placeholder: 'What were your goals for this practice?',
+        id: 'focusAreas',
+        label: 'Focus Areas',
+        placeholder: 'What skills or aspects did you work on?',
         required: true
       },
       {
-        id: 'challenges',
-        label: 'Challenges',
-        placeholder: 'What challenges did you face?',
+        id: 'improvements',
+        label: 'Progress Made',
+        placeholder: 'What improvements did you notice?',
         required: true
       },
       {
-        id: 'coachFeedback',
-        label: 'Coach Feedback',
-        placeholder: 'What feedback did you receive from your coach?'
+        id: 'nextSteps',
+        label: 'Next Steps',
+        placeholder: 'What will you focus on next time?'
       }
     ]
   },
   workout: {
     label: 'Workout',
     metrics: [
-      {
-        id: 'duration',
-        label: 'Duration',
-        description: 'How long did you workout?',
-        min: 0,
-        max: 120
-      },
+      ...commonMetrics,
       {
         id: 'intensity',
         label: 'Intensity',
@@ -150,121 +150,70 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         max: 10
       },
       {
-        id: 'muscleGroup',
-        label: 'Muscle Group',
-        description: 'Which muscle group did you focus on?',
+        id: 'recovery',
+        label: 'Recovery',
+        description: 'How well did you recover between sets?',
         min: 1,
-        max: 8
+        max: 10
       }
     ],
     prompts: [
       {
-        id: 'goals',
-        label: 'Goals',
-        placeholder: 'What were your goals for this workout?',
+        id: 'exercises',
+        label: 'Key Exercises',
+        placeholder: 'What exercises did you focus on?',
         required: true
       },
       {
         id: 'challenges',
         label: 'Challenges',
-        placeholder: 'What challenges did you face?',
+        placeholder: 'What was challenging about this workout?',
         required: true
       },
       {
-        id: 'recovery',
-        label: 'Recovery',
-        placeholder: 'How did you recover after the workout?'
+        id: 'adjustments',
+        label: 'Adjustments',
+        placeholder: 'What adjustments did you make during the workout?'
       }
     ]
   },
   film: {
-    label: 'Film',
+    label: 'Film Session',
     metrics: [
+      ...commonMetrics,
       {
-        id: 'rating',
-        label: 'Rating',
-        description: 'How would you rate the film?',
+        id: 'understanding',
+        label: 'Understanding',
+        description: 'How well did you understand the material?',
         min: 1,
         max: 10
       },
       {
-        id: 'enjoyment',
-        label: 'Enjoyment',
-        description: 'How much did you enjoy the film?',
-        min: 1,
-        max: 10
-      },
-      {
-        id: 'impact',
-        label: 'Impact',
-        description: 'How much did the film impact you?',
+        id: 'application',
+        label: 'Practical Application',
+        description: 'How applicable were the learnings?',
         min: 1,
         max: 10
       }
     ],
     prompts: [
       {
-        id: 'highlights',
-        label: 'Key Highlights',
-        placeholder: 'What were the best parts of the film?',
+        id: 'keyTakeaways',
+        label: 'Key Takeaways',
+        placeholder: 'What were your main learnings from this session?',
         required: true
       },
       {
-        id: 'criticisms',
-        label: 'Criticisms',
-        placeholder: 'What were the criticisms of the film?',
+        id: 'implementation',
+        label: 'Implementation Plan',
+        placeholder: 'How will you apply these learnings?',
         required: true
       },
       {
-        id: 'thoughts',
-        label: 'Thoughts',
-        placeholder: 'What were your thoughts about the film?'
-      }
-    ]
-  },
-  rest: {
-    label: 'Rest',
-    metrics: [
-      {
-        id: 'duration',
-        label: 'Duration',
-        description: 'How long did you rest?',
-        min: 0,
-        max: 120
-      },
-      {
-        id: 'quality',
-        label: 'Quality',
-        description: 'How well did you rest?',
-        min: 1,
-        max: 10
-      },
-      {
-        id: 'effectiveness',
-        label: 'Effectiveness',
-        description: 'How effective was your rest?',
-        min: 1,
-        max: 10
-      }
-    ],
-    prompts: [
-      {
-        id: 'goals',
-        label: 'Goals',
-        placeholder: 'What were your goals for this rest?',
-        required: true
-      },
-      {
-        id: 'challenges',
-        label: 'Challenges',
-        placeholder: 'What challenges did you face?',
-        required: true
-      },
-      {
-        id: 'recovery',
-        label: 'Recovery',
-        placeholder: 'How did you recover from the rest?'
+        id: 'questions',
+        label: 'Questions/Clarifications',
+        placeholder: 'What questions came up during the session?'
       }
     ]
   }
-} 
+}; 

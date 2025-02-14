@@ -16,15 +16,23 @@ import {
 } from 'react-native-paper'
 import { Picker } from '@react-native-picker/picker'
 import Slider from '@react-native-community/slider'
-import { EntryType, entryTypeConfigs, GameDetails } from '../src/config/entryTypes'
-import { Colors } from '../constants/Colors'
+import { EntryType, entryTypeConfigs, GameDetails } from '@/src/config/entryTypes'
+import { Colors } from '@/constants/Colors'
 import Toast from 'react-native-toast-message'
+import { SharedStyles } from '@/constants/Styles'
+
+interface GameScore {
+  yourTeam: string;
+  opponent: string;
+}
 
 interface FormData {
-  type: EntryType | ''
-  metrics: Record<string, number>
-  prompts: Record<string, string>
-  gameDetails?: GameDetails
+  type: EntryType | '';
+  metrics: Record<string, number>;
+  prompts: Record<string, string>;
+  gameDetails?: GameDetails & {
+    score?: GameScore;
+  };
 }
 
 export default function JournalEntryScreen() {
@@ -37,7 +45,10 @@ export default function JournalEntryScreen() {
   const handleMetricChange = (metricId: string, value: number) => {
     setFormData(prev => ({
       ...prev,
-      metrics: { ...prev.metrics, [metricId]: value }
+      metrics: { 
+        ...prev.metrics, 
+        [metricId]: parseFloat(value.toFixed(1))
+      }
     }))
   }
 
@@ -53,10 +64,42 @@ export default function JournalEntryScreen() {
       ...prev,
       gameDetails: {
         ...prev.gameDetails,
-        [field]: value as any
+        [field]: value
       }
     }))
   }
+
+  const determineResult = (yourScore: string, opponentScore: string): 'win' | 'loss' | 'draw' | undefined => {
+    const yourNum = parseInt(yourScore);
+    const oppNum = parseInt(opponentScore);
+    
+    if (isNaN(yourNum) || isNaN(oppNum)) return undefined;
+    
+    if (yourNum > oppNum) return 'win';
+    if (yourNum < oppNum) return 'loss';
+    return 'draw';
+  };
+
+  const handleScoreChange = (team: 'yourTeam' | 'opponent', value: string) => {
+    setFormData(prev => {
+      const newScore = {
+        ...(prev.gameDetails?.score || { yourTeam: '', opponent: '' }),
+        [team]: value
+      };
+      
+      // Automatically determine the result based on scores
+      const result = determineResult(newScore.yourTeam, newScore.opponent);
+      
+      return {
+        ...prev,
+        gameDetails: {
+          ...prev.gameDetails,
+          score: newScore,
+          result: result // This will update the result automatically
+        }
+      };
+    });
+  };
 
   const handleSubmit = async () => {
     if (!formData.type) {
@@ -69,9 +112,23 @@ export default function JournalEntryScreen() {
     }
 
     const config = entryTypeConfigs[formData.type]
+    
+    // Validate required metrics
+    const missingMetrics = config.metrics.filter(
+      m => formData.metrics[m.id] === undefined
+    )
+    if (missingMetrics.length > 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: `Please rate all metrics`
+      })
+      return
+    }
+
+    // Validate required prompts
     const requiredPrompts = config.prompts.filter(p => p.required)
     const missingPrompts = requiredPrompts.filter(p => !formData.prompts[p.id])
-
     if (missingPrompts.length > 0) {
       Toast.show({
         type: 'error',
@@ -113,6 +170,7 @@ export default function JournalEntryScreen() {
         text2: 'Journal entry saved successfully!'
       })
       
+      // Reset form
       setFormData({
         type: '',
         metrics: {},
@@ -133,65 +191,104 @@ export default function JournalEntryScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={SharedStyles.screenContainer}
     >
-      <ScrollView style={styles.scrollView}>
-        <Card style={styles.card}>
-          <Card.Title title="New Journal Entry" />
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={SharedStyles.contentContainer}
+      >
+        <Text style={SharedStyles.sectionTitle}>New Journal Entry</Text>
+        
+        <Card style={[SharedStyles.card, styles.formCard]}>
           <Card.Content>
             <View style={styles.formSection}>
-              <Text style={styles.label}>Entry Type</Text>
-              <Picker
-                selectedValue={formData.type}
-                onValueChange={(value: string) => setFormData({
-                  type: value as EntryType,
-                  metrics: {},
-                  prompts: {}
-                })}
-                style={styles.picker}
-              >
-                <Picker.Item label="Select entry type" value="" />
-                {Object.entries(entryTypeConfigs).map(([type, config]) => (
-                  <Picker.Item
-                    key={type}
-                    label={config.label}
-                    value={type}
-                  />
-                ))}
-              </Picker>
+              <Text style={SharedStyles.label}>Entry Type</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={formData.type}
+                  onValueChange={(value: string) => setFormData({
+                    type: value as EntryType,
+                    metrics: {},
+                    prompts: {}
+                  })}
+                  style={styles.picker}
+                  dropdownIconColor={Colors.dark.text}
+                  itemStyle={{ color: Colors.dark.text }}
+                >
+                  <Picker.Item label="Select entry type" value="" />
+                  {Object.entries(entryTypeConfigs).map(([type, config]) => (
+                    <Picker.Item
+                      key={type}
+                      label={config.label}
+                      value={type}
+                      color={Colors.dark.text}
+                    />
+                  ))}
+                </Picker>
+              </View>
             </View>
 
             {formData.type === 'game' && (
               <View style={styles.formSection}>
                 <TextInput
-                  label="Opponent"
+                  label="Opponent Name"
                   value={formData.gameDetails?.opponent || ''}
                   onChangeText={(value: string) => handleGameDetailsChange('opponent', value)}
-                  style={styles.input}
+                  style={[SharedStyles.input, styles.input]}
                 />
-                <View style={styles.row}>
-                  <View style={styles.flex1}>
-                    <Text style={styles.label}>Result</Text>
-                    <SegmentedButtons
-                      value={formData.gameDetails?.result || ''}
-                      onValueChange={(value: string) => 
-                        handleGameDetailsChange('result', value as 'win' | 'loss' | 'draw')
-                      }
-                      buttons={[
-                        { value: 'win', label: 'Win' },
-                        { value: 'loss', label: 'Loss' },
-                        { value: 'draw', label: 'Draw' }
-                      ]}
-                    />
-                  </View>
-                  <View style={styles.flex1}>
+                
+                <View style={styles.scoreContainer}>
+                  <View style={styles.scoreTeam}>
+                    <Text style={styles.scoreLabel}>Your Team</Text>
                     <TextInput
-                      label="Score (optional)"
-                      value={formData.gameDetails?.score || ''}
-                      onChangeText={(value: string) => handleGameDetailsChange('score', value)}
-                      style={styles.input}
+                      label="Score"
+                      value={formData.gameDetails?.score?.yourTeam || ''}
+                      onChangeText={(value: string) => handleScoreChange('yourTeam', value)}
+                      keyboardType="numeric"
+                      style={[SharedStyles.input, styles.scoreInput]}
                     />
                   </View>
+                  
+                  <Text style={styles.scoreSeparator}>-</Text>
+                  
+                  <View style={styles.scoreTeam}>
+                    <Text style={styles.scoreLabel}>Opponent</Text>
+                    <TextInput
+                      label="Score"
+                      value={formData.gameDetails?.score?.opponent || ''}
+                      onChangeText={(value: string) => handleScoreChange('opponent', value)}
+                      keyboardType="numeric"
+                      style={[SharedStyles.input, styles.scoreInput]}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.resultContainer}>
+                  <Text style={SharedStyles.label}>Result</Text>
+                  <SegmentedButtons
+                    value={formData.gameDetails?.result || ''}
+                    onValueChange={(value: string) => 
+                      handleGameDetailsChange('result', value as 'win' | 'loss' | 'draw')
+                    }
+                    buttons={[
+                      { 
+                        value: 'win', 
+                        label: 'Win',
+                        style: formData.gameDetails?.result === 'win' ? styles.winButton : undefined
+                      },
+                      { 
+                        value: 'loss', 
+                        label: 'Loss',
+                        style: formData.gameDetails?.result === 'loss' ? styles.lossButton : undefined
+                      },
+                      { 
+                        value: 'draw', 
+                        label: 'Draw',
+                        style: formData.gameDetails?.result === 'draw' ? styles.drawButton : undefined
+                      }
+                    ]}
+                    style={styles.resultButtons}
+                  />
                 </View>
               </View>
             )}
@@ -200,24 +297,34 @@ export default function JournalEntryScreen() {
               <>
                 <Divider style={styles.divider} />
                 <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Metrics</Text>
+                  <Text style={styles.sectionTitle}>Rate Your Performance</Text>
                   {selectedConfig.metrics.map((metric) => (
                     <View key={metric.id} style={styles.metricContainer}>
-                      <Text style={styles.label}>{metric.label}</Text>
+                      <View style={styles.metricHeader}>
+                        <Text style={styles.label}>{metric.label}</Text>
+                        <Text style={styles.sliderValue}>
+                          {(formData.metrics[metric.id] || 5).toFixed(1)}
+                        </Text>
+                      </View>
                       <Text style={styles.description}>{metric.description}</Text>
                       <View style={styles.sliderContainer}>
+                        <Text style={styles.sliderMinMax}>{metric.min}</Text>
                         <Slider
                           minimumValue={metric.min}
                           maximumValue={metric.max}
-                          step={1}
+                          step={0.1}
                           value={formData.metrics[metric.id] || 5}
                           onValueChange={(value: number) => handleMetricChange(metric.id, value)}
-                          minimumTrackTintColor={Colors.primary}
-                          maximumTrackTintColor={Colors.border}
+                          minimumTrackTintColor={Colors.dark.primary}
+                          maximumTrackTintColor={Colors.dark.border}
+                          thumbTintColor={Colors.dark.primary}
+                          style={styles.slider}
                         />
-                        <Text style={styles.sliderValue}>
-                          {formData.metrics[metric.id] || 5}
-                        </Text>
+                        <Text style={styles.sliderMinMax}>{metric.max}</Text>
+                      </View>
+                      <View style={styles.sliderLabels}>
+                        <Text style={styles.sliderLabel}>Poor</Text>
+                        <Text style={styles.sliderLabel}>Excellent</Text>
                       </View>
                     </View>
                   ))}
@@ -225,7 +332,7 @@ export default function JournalEntryScreen() {
 
                 <Divider style={styles.divider} />
                 <View style={styles.formSection}>
-                  <Text style={styles.sectionTitle}>Journal Prompts</Text>
+                  <Text style={styles.sectionTitle}>Reflect on Your Performance</Text>
                   {selectedConfig.prompts.map((prompt) => (
                     <View key={prompt.id} style={styles.promptContainer}>
                       <Text style={styles.label}>
@@ -261,42 +368,42 @@ export default function JournalEntryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background
-  },
   scrollView: {
-    flex: 1
+    flex: 1,
   },
-  card: {
-    margin: 16,
-    backgroundColor: Colors.card
+  formCard: {
+    marginTop: 16,
   },
   formSection: {
-    marginBottom: 20
+    marginBottom: 24,
+  },
+  pickerContainer: {
+    backgroundColor: Colors.dark.input,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  picker: {
+    backgroundColor: Colors.dark.input,
+    color: Colors.dark.text,
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 8,
-    color: Colors.text
+    color: Colors.dark.text
   },
   required: {
-    color: Colors.error
+    color: Colors.dark.error
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    color: Colors.text
-  },
-  picker: {
-    backgroundColor: Colors.input,
-    borderRadius: 8
+    color: Colors.dark.text
   },
   input: {
     marginBottom: 12,
-    backgroundColor: Colors.input
+    backgroundColor: Colors.dark.input
   },
   row: {
     flexDirection: 'row',
@@ -309,29 +416,70 @@ const styles = StyleSheet.create({
     marginVertical: 20
   },
   metricContainer: {
-    marginBottom: 16
+    marginBottom: 24,
+    backgroundColor: Colors.dark.card,
+    padding: 16,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,
-    color: Colors.textSecondary,
-    marginBottom: 8
+    color: Colors.dark.textSecondary,
+    marginBottom: 16,
   },
   sliderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: 12,
+    marginBottom: 8,
+  },
+  slider: {
+    flex: 1,
+    height: 40, // Increased height for better touch target
   },
   sliderValue: {
+    color: Colors.dark.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
     minWidth: 30,
     textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '500'
+  },
+  sliderMinMax: {
+    color: Colors.dark.textSecondary,
+    fontSize: 12,
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  sliderLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  sliderLabel: {
+    color: Colors.dark.textSecondary,
+    fontSize: 12,
   },
   promptContainer: {
     marginBottom: 16
   },
   textArea: {
-    backgroundColor: Colors.input,
+    backgroundColor: Colors.dark.input,
     borderRadius: 8,
     padding: 12,
     minHeight: 100,
@@ -339,6 +487,47 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 20,
-    backgroundColor: Colors.primary
-  }
+    backgroundColor: Colors.dark.primary
+  },
+  scoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 16,
+    gap: 12,
+  },
+  scoreTeam: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  scoreLabel: {
+    color: Colors.dark.text,
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  scoreInput: {
+    width: '100%',
+    textAlign: 'center',
+  },
+  scoreSeparator: {
+    color: Colors.dark.text,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginHorizontal: 8,
+  },
+  resultContainer: {
+    marginTop: 8,
+  },
+  resultButtons: {
+    marginTop: 8,
+  },
+  winButton: {
+    backgroundColor: Colors.dark.primary,
+  },
+  lossButton: {
+    backgroundColor: Colors.dark.error,
+  },
+  drawButton: {
+    backgroundColor: Colors.dark.secondary,
+  },
 }) 

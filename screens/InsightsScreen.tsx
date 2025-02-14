@@ -4,21 +4,24 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native'
 import {
   Text,
   Card,
   Chip,
   SegmentedButtons,
-  ActivityIndicator
+  ActivityIndicator,
+  Surface
 } from 'react-native-paper'
 import { LineChart } from 'react-native-chart-kit'
-import { Colors } from '../constants/Colors'
+import { Colors } from '@/constants/Colors'
 import { useFocusEffect } from '@react-navigation/native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { InsightCard, SportMetric } from '../types/insights'
+import { InsightCard, SportMetric } from '@/types/insights'
 import { format, subDays } from 'date-fns'
+import { SharedStyles } from '@/constants/Styles'
 
 export default function InsightsScreen() {
   const [loading, setLoading] = useState(true)
@@ -98,35 +101,37 @@ export default function InsightsScreen() {
   const getInsightColor = (type: InsightCard['type']) => {
     switch (type) {
       case 'improvement':
-        return Colors.light.primary
+        return Colors.dark.primary
       case 'warning':
-        return Colors.light.error
+        return Colors.dark.error
       case 'achievement':
-        return Colors.light.secondary
+        return Colors.dark.secondary
       default:
-        return Colors.light.text
+        return Colors.dark.text
     }
   }
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.light.primary} />
+      <View style={[SharedStyles.screenContainer, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={Colors.dark.primary} />
       </View>
     )
   }
 
   return (
     <ScrollView 
-      style={styles.container}
+      style={SharedStyles.screenContainer}
+      contentContainerStyle={SharedStyles.contentContainer}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
+          tintColor={Colors.dark.primary}
         />
       }
     >
-      <Text variant="headlineMedium" style={styles.title}>Insights</Text>
+      <Text variant="headlineMedium" style={styles.headerTitle}>Insights</Text>
 
       <SegmentedButtons
         value={timeRange}
@@ -140,9 +145,10 @@ export default function InsightsScreen() {
       />
 
       {metrics.map(metric => (
-        <Card key={metric.id} style={styles.metricCard}>
+        <Card key={metric.id} style={[SharedStyles.card, styles.metricCard]}>
           <Card.Title
             title={metric.label}
+            titleStyle={styles.cardTitle}
             right={() => (
               <Chip 
                 icon={metric.change >= 0 ? 'trending-up' : 'trending-down'}
@@ -150,8 +156,8 @@ export default function InsightsScreen() {
                   styles.changeChip,
                   { 
                     backgroundColor: metric.change >= 0 
-                      ? Colors.light.primary 
-                      : Colors.light.error 
+                      ? Colors.dark.primary 
+                      : Colors.dark.error 
                   }
                 ]}
               >
@@ -164,19 +170,24 @@ export default function InsightsScreen() {
               data={{
                 labels: metric.trend.map(t => format(new Date(t.date), 'MMM d')),
                 datasets: [{
-                  data: metric.trend.map(t => t.value)
+                  data: metric.trend.map(t => t.value),
+                  strokeWidth: 2
                 }]
               }}
               width={Dimensions.get('window').width - 48}
               height={220}
               chartConfig={{
-                backgroundColor: Colors.light.card,
-                backgroundGradientFrom: Colors.light.card,
-                backgroundGradientTo: Colors.light.card,
+                backgroundColor: Colors.dark.card,
+                backgroundGradientFrom: Colors.dark.card,
+                backgroundGradientTo: Colors.dark.card,
                 decimalPlaces: 1,
-                color: (opacity = 1) => `rgba(255, 40, 40, ${opacity})`,
-                style: {
-                  borderRadius: 16
+                color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
+                labelColor: () => Colors.dark.text,
+                style: { borderRadius: 16 },
+                propsForDots: {
+                  r: "6",
+                  strokeWidth: "2",
+                  stroke: Colors.dark.primary
                 }
               }}
               bezier
@@ -189,81 +200,113 @@ export default function InsightsScreen() {
       <Text variant="titleLarge" style={styles.sectionTitle}>Recent Insights</Text>
 
       {insights.map(insight => (
-        <Card key={insight.id} style={styles.insightCard}>
-          <Card.Title
-            title={insight.title}
-            left={props => (
-              <MaterialCommunityIcons
-                {...props}
-                name={getInsightIcon(insight.type)}
-                size={24}
-                color={getInsightColor(insight.type)}
-              />
-            )}
-          />
-          <Card.Content>
-            <Text variant="bodyMedium">{insight.description}</Text>
-            {insight.metric && (
-              <View style={styles.insightMetric}>
-                <Text variant="labelMedium" style={styles.metricLabel}>
-                  {insight.metric.label}
-                </Text>
-                <Text variant="headlineMedium" style={styles.metricValue}>
-                  {insight.metric.value}
-                </Text>
-              </View>
-            )}
-          </Card.Content>
-        </Card>
+        <Surface key={insight.id} style={[styles.insightCard]}>
+          <View style={styles.insightHeader}>
+            <MaterialCommunityIcons
+              name={getInsightIcon(insight.type)}
+              size={24}
+              color={getInsightColor(insight.type)}
+            />
+            <Text variant="titleMedium" style={styles.insightTitle}>
+              {insight.title}
+            </Text>
+          </View>
+          <Text variant="bodyMedium" style={styles.insightDescription}>
+            {insight.description}
+          </Text>
+          {insight.metric && (
+            <View style={styles.insightMetric}>
+              <Text variant="labelMedium" style={styles.metricLabel}>
+                {insight.metric.label}
+              </Text>
+              <Text variant="headlineMedium" style={styles.metricValue}>
+                {insight.metric.value}
+              </Text>
+            </View>
+          )}
+        </Surface>
       ))}
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.light.background,
-    padding: 16
-  },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center'
   },
-  title: {
+  headerTitle: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
     marginBottom: 16
   },
   timeRange: {
     marginBottom: 16
   },
   metricCard: {
-    marginBottom: 16,
-    borderRadius: 12
+    marginBottom: 16
+  },
+  cardTitle: {
+    color: Colors.dark.text,
+    fontWeight: '600'
   },
   chart: {
     marginVertical: 8,
     borderRadius: 16
   },
   changeChip: {
-    marginRight: 16
+    marginRight: 16,
+    borderRadius: 16
   },
   sectionTitle: {
+    color: Colors.dark.text,
+    fontWeight: 'bold',
     marginVertical: 16
   },
   insightCard: {
+    padding: 16,
     marginBottom: 12,
-    borderRadius: 12
+    borderRadius: 12,
+    backgroundColor: Colors.dark.card,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8
+  },
+  insightTitle: {
+    color: Colors.dark.text,
+    fontWeight: '600',
+    flex: 1
+  },
+  insightDescription: {
+    color: Colors.dark.textSecondary,
+    marginBottom: 12
   },
   insightMetric: {
-    marginTop: 12,
-    alignItems: 'center'
+    alignItems: 'center',
+    backgroundColor: Colors.dark.input,
+    padding: 12,
+    borderRadius: 8
   },
   metricLabel: {
-    color: Colors.light.textSecondary
+    color: Colors.dark.textSecondary,
+    marginBottom: 4
   },
   metricValue: {
-    color: Colors.light.primary,
-    marginTop: 4
+    color: Colors.dark.primary,
+    fontWeight: 'bold'
   }
 }) 

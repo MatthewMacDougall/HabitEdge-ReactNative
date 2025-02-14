@@ -14,16 +14,18 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: Colors.dark.primary,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
-            // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
+            backgroundColor: Colors.dark.background,
           },
-          default: {},
+          android: {
+            backgroundColor: Colors.dark.background,
+          },
         }),
       }}>
       <Tabs.Screen
@@ -41,7 +43,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="journal"
+        name="entries"
         options={{
           title: 'Journal',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
