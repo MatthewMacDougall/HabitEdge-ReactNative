@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'expo-router'
 import { LineChart } from 'react-native-chart-kit'
 import { Colors } from '../constants/Colors'
-import { calculateStreak } from '../utils/streakCalculator'
+import { getStreakStats } from '../utils/streakCalculator'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 // Mock data - replace with actual API calls
@@ -35,9 +35,15 @@ export default function DashboardScreen() {
   const [recentEntries, setRecentEntries] = useState(mockJournalEntries)
 
   useEffect(() => {
-    // Calculate streak
-    const currentStreak = calculateStreak(recentEntries)
-    setStreak(currentStreak)
+    // Calculate streak stats when entries change
+    const stats = getStreakStats(recentEntries)
+    setStreak(stats.currentStreak)
+    
+    // You can also use other stats:
+    // stats.longestStreak
+    // stats.totalEntries
+    // stats.hasJournaledToday
+    // stats.lastEntry
   }, [recentEntries])
 
   const chartData = {
@@ -54,7 +60,7 @@ export default function DashboardScreen() {
         <Text variant="headlineMedium">Dashboard</Text>
         <Button
           mode="contained"
-          onPress={() => router.push('/journal-entry')}
+          onPress={() => router.push('/(tabs)/journal')}
           icon="plus"
         >
           New Entry
@@ -109,7 +115,7 @@ export default function DashboardScreen() {
             <IconButton
               {...props}
               icon="chevron-right"
-              onPress={() => router.push('/entries')}
+              onPress={() => router.push('/(tabs)/entries')}
             />
           )}
         />
