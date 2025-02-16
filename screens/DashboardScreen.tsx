@@ -92,9 +92,18 @@ export default function DashboardScreen() {
         </Surface>
       </View>
 
-      <Card style={[SharedStyles.card, styles.chartCard]}>
+      <Card 
+        style={[SharedStyles.card, styles.chartCard]}
+        onPress={() => router.push('/(tabs)/insights')}
+      >
         <Card.Content>
-          <Text variant="titleLarge" style={styles.chartTitle}>Performance Trend</Text>
+          <View style={styles.chartHeader}>
+            <Text variant="titleLarge" style={styles.chartTitle}>Performance Trend</Text>
+            <IconButton
+              icon="chevron-right"
+              iconColor={Colors.dark.primary}
+            />
+          </View>
           <LineChart
             data={chartData}
             width={Dimensions.get('window').width - 48}
@@ -130,7 +139,7 @@ export default function DashboardScreen() {
               {...props}
               icon="chevron-right"
               iconColor={Colors.dark.primary}
-              onPress={() => router.push('/entries')}
+              onPress={() => router.push('/(tabs)/journal')}
             />
           )}
         />
@@ -254,5 +263,11 @@ const styles = StyleSheet.create({
   },
   metric: {
     color: Colors.dark.textSecondary,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
 }) 

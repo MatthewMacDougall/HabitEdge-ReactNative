@@ -45,6 +45,26 @@ export default function TabLayout() {
       <Tabs.Screen
         name="entries"
         options={{
+          title: 'New Entry',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol 
+              size={32} 
+              name="plus.circle.fill" 
+              color={Colors.dark.primary}
+              style={{
+                marginBottom: -3,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+              }}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="journal"
+        options={{
           title: 'Journal',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
         }}
