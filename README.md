@@ -1,16 +1,16 @@
 # HabitEdge
 
-A mobile application designed to help athletes track their goals, habits, and progress in their sport.
+A mobile application designed to help athletes track their targets, habits, and progress in their sport.
 
 ## Features
 
-### Goals Management
-- Create and track both numeric and boolean (completion-based) goals
+### Targets Management
+- Create and track both numeric and boolean (completion-based) targets
 - Set deadlines and track progress over time
-- Filter goals by status (All, In Progress, Completed)
-- Log incremental progress for numeric goals
-- Mark boolean goals as complete
-- Edit and delete existing goals
+- Filter targets by status (All, In Progress, Completed)
+- Log incremental progress for numeric targets
+- Mark boolean targets as complete
+- Edit and delete existing targets
 
 ### Journal
 - Track daily training sessions
@@ -18,7 +18,7 @@ A mobile application designed to help athletes track their goals, habits, and pr
 - Monitor progress over time
 
 ### Dashboard (Coming Soon)
-- Overview of active goals
+- Overview of active targets
 - Recent progress updates
 - Quick-access to common actions
 - Progress insights and statistics
@@ -39,7 +39,7 @@ src/
 │   ├── (tabs)/        # Tab-based navigation
 │   └── _layout.tsx    # Root layout configuration
 ├── screens/           # Main screen components
-│   ├── GoalsScreen.tsx     # Goals management
+│   ├── TargetsScreen.tsx     # Targets management
 │   ├── JournalScreen.tsx   # Training journal
 │   └── DashboardScreen.tsx # Overview dashboard
 ├── components/        # Reusable UI components
@@ -48,7 +48,7 @@ src/
 │   ├── Colors.ts    # Theme colors
 │   └── Styles.ts    # Shared styles
 ├── types/           # TypeScript definitions
-│   └── goals.ts     # Goal-related types
+│   └── targets.ts     # Target-related types
 └── utils/           # Utility functions
     └── storage.ts   # AsyncStorage helpers
 ```

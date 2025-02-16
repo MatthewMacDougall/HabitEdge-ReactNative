@@ -8,7 +8,7 @@
  * - Create new journal entries
  * - View training history
  * - Track session metrics
- * - Link entries to goals
+ * - Link entries to targets
  * - Filter by training type
  * - Search entries
  */

@@ -1,37 +1,37 @@
 /**
- * Utilities for persisting and retrieving goals from AsyncStorage
+ * Utilities for persisting and retrieving targets from AsyncStorage
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Goal } from '@/types/goals'
+import { Target } from '@/types/targets'
 
-const GOALS_STORAGE_KEY = 'goals'
+const TARGETS_STORAGE_KEY = 'targets'
 
 /**
- * Save goals to AsyncStorage
- * @param goals Array of goals to save
+ * Save targets to AsyncStorage
+ * @param targets Array of targets to save
  * @throws Error if saving fails
  */
-export const saveGoals = async (goals: Goal[]): Promise<void> => {
+export const saveTargets = async (targets: Target[]): Promise<void> => {
   try {
-    await AsyncStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify(goals))
+    await AsyncStorage.setItem(TARGETS_STORAGE_KEY, JSON.stringify(targets))
   } catch (error) {
-    console.error('Error saving goals:', error)
+    console.error('Error saving targets:', error)
     throw error
   }
 }
 
 /**
- * Load goals from AsyncStorage
- * @returns Array of saved goals
+ * Load targets from AsyncStorage
+ * @returns Array of saved targets
  * @throws Error if loading fails
  */
-export const loadGoals = async (): Promise<Goal[]> => {
+export const loadTargets = async (): Promise<Target[]> => {
   try {
-    const goalsJson = await AsyncStorage.getItem(GOALS_STORAGE_KEY)
-    return goalsJson ? JSON.parse(goalsJson) : []
+    const targetsJson = await AsyncStorage.getItem(TARGETS_STORAGE_KEY)
+    return targetsJson ? JSON.parse(targetsJson) : []
   } catch (error) {
-    console.error('Error loading goals:', error)
+    console.error('Error loading targets:', error)
     throw error
   }
 } 

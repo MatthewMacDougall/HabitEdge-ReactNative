@@ -16,8 +16,8 @@ export interface JournalEntry {
   rating: number;
   /** Duration in minutes */
   duration: number;
-  /** Associated goals worked on */
-  relatedGoals?: number[];  // Goal IDs
+  /** Associated targets worked on */
+  relatedTargets?: number[];  // Changed from relatedTargets
   /** Metrics tracked during session */
   metrics?: SessionMetric[];
   /** Creation timestamp */

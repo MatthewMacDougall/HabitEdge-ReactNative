@@ -1,57 +1,57 @@
 /**
- * GoalModal Component
+ * TargetModal Component
  * 
- * Modal for creating or editing goals. Handles both numeric and boolean goals.
+ * Modal for creating or editing targets. Handles both numeric and boolean targets.
  * 
  * Features:
- * - Goal title input
- * - Goal type selection
- * - Target value for numeric goals
+ * - Target title input
+ * - Target type selection
+ * - Target value for numeric targets
  * - Unit specification
  * - Deadline selection
  * - Delete option in edit mode
  * 
  * @example
- * <GoalModal
+ * <TargetModal
  *   visible={showModal}
  *   isEditMode={false}
- *   initialGoal={newGoal}
+ *   initialTarget={newTarget}
  *   onDismiss={() => setShowModal(false)}
- *   onSave={handleSaveGoal}
+ *   onSave={handleSaveTarget}
  * />
  */
 
 import { StyleSheet } from 'react-native';
 import { Modal, Portal, Text, Button, TextInput } from 'react-native-paper';
-import { Goal } from "@/types/goals";
+import { Target } from "@/types/targets";
 import { useState } from "react";
 import { Colors } from '@/constants/Colors';
 
-interface GoalModalProps {
+interface TargetModalProps {
   /** Controls modal visibility */
   visible: boolean;
   /** Whether the modal is in edit mode */
   isEditMode: boolean;
-  /** Initial goal data for editing */
-  initialGoal?: Partial<Goal>;
+  /** Initial target data for editing */
+  initialTarget?: Partial<Target>;
   /** Callback when modal is dismissed */
   onDismiss: () => void;
-  /** Callback when goal is saved */
-  onSave: (goal: Partial<Goal>) => Promise<void>;
-  /** Optional callback for deleting goal in edit mode */
+  /** Callback when target is saved */
+  onSave: (target: Partial<Target>) => Promise<void>;
+  /** Optional callback for deleting target in edit mode */
   onDelete?: () => Promise<void>;
 }
 
-export const GoalModal: React.FC<GoalModalProps> = ({
+export const TargetModal: React.FC<TargetModalProps> = ({
   visible,
   isEditMode,
-  initialGoal,
+  initialTarget,
   onDismiss,
   onSave,
   onDelete,
 }) => {
-  /** Form state for goal data */
-  const [goalData, setGoalData] = useState<Partial<Goal>>(initialGoal || {});
+  /** Form state for target data */
+  const [targetData, setTargetData] = useState<Partial<Target>>(initialTarget || {});
   /** Controls delete confirmation dialog */
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 

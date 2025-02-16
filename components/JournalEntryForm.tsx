@@ -9,7 +9,7 @@
  * - Duration input
  * - Notes editor
  * - Metric tracking
- * - Goal linking
+ * - Target linking
  */
 
 interface JournalEntryFormProps {

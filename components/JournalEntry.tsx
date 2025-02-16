@@ -6,7 +6,7 @@
  * Features:
  * - Shows session summary
  * - Displays metrics
- * - Links to related goals
+ * - Links to related targets
  * - Edit/delete options
  */
 
