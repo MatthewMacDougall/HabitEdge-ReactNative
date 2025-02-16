@@ -1,50 +1,92 @@
-# Welcome to your Expo app 👋
+# HabitEdge
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A mobile application designed to help athletes track their goals, habits, and progress in their sport.
 
-## Get started
+## Features
 
-1. Install dependencies
+### Goals Management
+- Create and track both numeric and boolean (completion-based) goals
+- Set deadlines and track progress over time
+- Filter goals by status (All, In Progress, Completed)
+- Log incremental progress for numeric goals
+- Mark boolean goals as complete
+- Edit and delete existing goals
 
-   ```bash
-   npm install
-   ```
+### Journal
+- Track daily training sessions
+- Record workout details and notes
+- Monitor progress over time
 
-2. Start the app
+### Dashboard (Coming Soon)
+- Overview of active goals
+- Recent progress updates
+- Quick-access to common actions
+- Progress insights and statistics
 
-   ```bash
-    npx expo start
-   ```
+## Technical Stack
 
-In the output, you'll find options to open the app in a
+- React Native with Expo
+- TypeScript for type safety
+- React Native Paper for UI components
+- AsyncStorage for local data persistence
+- React Navigation for routing
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Project Structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+├── app/                # Expo Router app directory
+│   ├── (tabs)/        # Tab-based navigation
+│   └── _layout.tsx    # Root layout configuration
+├── screens/           # Main screen components
+│   ├── GoalsScreen.tsx     # Goals management
+│   ├── JournalScreen.tsx   # Training journal
+│   └── DashboardScreen.tsx # Overview dashboard
+├── components/        # Reusable UI components
+│   └── ui/           # Basic UI components
+├── constants/        # App-wide constants
+│   ├── Colors.ts    # Theme colors
+│   └── Styles.ts    # Shared styles
+├── types/           # TypeScript definitions
+│   └── goals.ts     # Goal-related types
+└── utils/           # Utility functions
+    └── storage.ts   # AsyncStorage helpers
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Getting Started
 
-## Learn more
+1. Install dependencies
+```bash
+npm install
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+2. Start the development server
+```bash
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+3. Run on your preferred platform
+- Press 'i' for iOS simulator
+- Press 'a' for Android emulator
+- Scan QR code with Expo Go app for physical device
 
-## Join the community
+## Development
 
-Join our community of developers creating universal apps.
+### Environment Setup
+- Node.js 16 or later
+- Expo CLI
+- iOS Simulator or Android Emulator
+- Git
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Code Style
+- TypeScript for type safety
+- ESLint for code linting
+- Prettier for code formatting
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request

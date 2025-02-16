@@ -31,6 +31,55 @@ import { useFocusEffect } from '@react-navigation/native'
 import { SharedStyles } from '@/constants/Styles'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 
+/**
+ * GoalsScreen Component
+ * 
+ * Main screen for managing user goals. Provides functionality to create, edit, 
+ * delete, and track progress of both numeric and boolean goals.
+ * 
+ * Features:
+ * - Create new goals with deadlines
+ * - Track numeric progress or boolean completion
+ * - Filter goals by status
+ * - Edit existing goals
+ * - Delete goals with confirmation
+ * - Log progress updates
+ */
+
+// State interfaces
+interface GoalState {
+  /** All goals stored in the application */
+  goals: Goal[];
+  /** Loading state for initial data fetch */
+  loading: boolean;
+  /** Refresh state for pull-to-refresh */
+  refreshing: boolean;
+  /** Controls visibility of add/edit goal modal */
+  showModal: boolean;
+  /** Controls visibility of progress update modal */
+  showProgressModal: boolean;
+  /** Currently selected goal for editing/updating */
+  selectedGoal: Goal | null;
+  /** Controls visibility of date picker */
+  showDatePicker: boolean;
+  /** Current filter for goals list */
+  filterType: GoalFilter;
+  /** Current goal being created/edited */
+  newGoal: Partial<Goal>;
+  /** Progress update amount */
+  progressUpdate: string;
+  /** Optional note for progress update */
+  progressNote: string;
+  /** Timestamp for progress update */
+  progressDate: string;
+  /** Controls visibility of progress date picker */
+  showProgressDatePicker: boolean;
+  /** Whether the modal is in edit mode */
+  isEditMode: boolean;
+  /** Controls visibility of delete confirmation */
+  showDeleteConfirm: boolean;
+}
+
 export default function GoalsScreen() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +109,11 @@ export default function GoalsScreen() {
     }, [])
   )
 
+  /**
+   * Loads goals from storage and updates state
+   * Handles loading state and error notifications
+   * @throws Error if loading fails, but error is caught and displayed to user
+   */
   const loadStoredGoals = async () => {
     try {
       setLoading(true)
@@ -76,12 +130,26 @@ export default function GoalsScreen() {
     }
   }
 
+  /**
+   * Refreshes goals list when pulled down
+   * Manages refreshing state during the operation
+   */
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await loadStoredGoals()
     setRefreshing(false)
   }, [])
 
+  /**
+   * Handles adding a new goal
+   * Validates required fields and saves to storage
+   * 
+   * Validation:
+   * - Title must not be empty
+   * - Numeric goals must have a target value
+   * 
+   * @throws Error if saving fails, but error is caught and displayed to user
+   */
   const handleAddGoal = async () => {
     if (!newGoal.title?.trim()) {
       Toast.show({
@@ -134,6 +202,17 @@ export default function GoalsScreen() {
     }
   }
 
+  /**
+   * Updates progress for a goal
+   * Handles both numeric and boolean goals differently
+   * 
+   * For numeric goals:
+   * - Validates progress value is a positive number
+   * - Updates total progress
+   * - Checks if target is reached
+   * 
+   * @throws Error if saving fails, but error is caught and displayed to user
+   */
   const handleUpdateProgress = async () => {
     if (!selectedGoal) return
 
@@ -190,6 +269,10 @@ export default function GoalsScreen() {
     }
   }
 
+  /**
+   * Resets the new goal form to default values
+   * Used when closing modal or after successful submission
+   */
   const resetNewGoal = () => {
     setNewGoal({
       type: 'numeric',
@@ -200,6 +283,19 @@ export default function GoalsScreen() {
     })
   }
 
+  /**
+   * Calculates progress percentage for a goal
+   * 
+   * For boolean goals:
+   * - Returns 100 if completed, 0 if not
+   * 
+   * For numeric goals:
+   * - Calculates percentage based on total progress vs target
+   * - Caps at 100% even if exceeded
+   * 
+   * @param goal Goal to calculate progress for
+   * @returns Progress percentage between 0 and 100
+   */
   const calculateProgress = (goal: Goal): number => {
     if (goal.type === 'boolean') {
       return goal.completed ? 100 : 0;
@@ -209,6 +305,12 @@ export default function GoalsScreen() {
     return Math.min(100, (total / goal.target) * 100);
   }
 
+  /**
+   * Calculates days remaining until goal deadline
+   * 
+   * @param deadline ISO string of goal deadline
+   * @returns Number of days remaining (can be negative if past deadline)
+   */
   const getDaysRemaining = (deadline: string): number => {
     const today = new Date()
     const deadlineDate = new Date(deadline)
@@ -216,6 +318,16 @@ export default function GoalsScreen() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
+  /**
+   * Filters goals based on current filter type
+   * 
+   * Filter types:
+   * - 'all': Shows all goals
+   * - 'ongoing': Shows incomplete goals
+   * - 'completed': Shows completed goals
+   * 
+   * @returns Filtered array of goals
+   */
   const filteredGoals = goals.filter(goal => {
     switch (filterType) {
       case 'completed':
@@ -227,11 +339,23 @@ export default function GoalsScreen() {
     }
   })
 
+  /**
+   * Calculates total progress for a numeric goal
+   * 
+   * @param progress Array of progress entries
+   * @returns Sum of all progress values
+   */
   const calculateTotal = (progress?: GoalProgress[]): number => {
     if (!progress) return 0;
     return progress.reduce((sum, p) => sum + p.value, 0);
   }
 
+  /**
+   * Updates completion status for boolean goals
+   * 
+   * @param completed New completion status
+   * @throws Error if saving fails, but error is caught and displayed to user
+   */
   const handleBooleanProgress = async (completed: boolean) => {
     if (!selectedGoal) return
 
@@ -262,6 +386,12 @@ export default function GoalsScreen() {
     }
   }
 
+  /**
+   * Prepares a goal for editing
+   * Sets up edit mode and populates form with goal data
+   * 
+   * @param goal Goal to edit
+   */
   const handleEditGoal = (goal: Goal) => {
     setNewGoal({
       ...goal,
@@ -271,6 +401,16 @@ export default function GoalsScreen() {
     setShowModal(true);
   }
 
+  /**
+   * Updates an existing goal
+   * Validates required fields and saves changes
+   * 
+   * Validation:
+   * - Title must not be empty
+   * - Numeric goals must have a target value
+   * 
+   * @throws Error if saving fails, but error is caught and displayed to user
+   */
   const handleUpdateGoal = async () => {
     if (!newGoal.title?.trim()) {
       Toast.show({
@@ -315,6 +455,12 @@ export default function GoalsScreen() {
     }
   };
 
+  /**
+   * Deletes a goal after confirmation
+   * Removes goal from storage and updates state
+   * 
+   * @throws Error if saving fails, but error is caught and displayed to user
+   */
   const handleDeleteGoal = async () => {
     if (!newGoal.id) return;
     

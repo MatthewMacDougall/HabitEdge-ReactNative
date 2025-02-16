@@ -20,6 +20,7 @@ export const Colors = {
     primary: '#FF4B4B',
     secondary: '#FF8C00',
     input: '#FFFFFF',
+    icon: '#000000',
   },
   dark: {
     text: '#FFFFFF',
@@ -34,5 +35,6 @@ export const Colors = {
     primary: '#FF6B6B',
     secondary: '#FFA500',
     input: '#2A2A2A',
+    icon: '#FFFFFF',
   },
 };

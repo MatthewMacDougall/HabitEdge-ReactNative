@@ -79,11 +79,11 @@ export default function JournalEntryScreen() {
     if (yourNum < oppNum) return 'loss';
     return 'draw';
   };
-
   const handleScoreChange = (team: 'yourTeam' | 'opponent', value: string) => {
-    setFormData(prev => {
-      const newScore = {
-        ...(prev.gameDetails?.score || { yourTeam: '', opponent: '' }),
+    setFormData((prev: FormData) => {
+      const currentScore: GameScore = prev.gameDetails?.score ?? { yourTeam: '', opponent: '' };
+      const newScore: GameScore = {
+        ...currentScore,
         [team]: value
       };
       
@@ -95,7 +95,7 @@ export default function JournalEntryScreen() {
         gameDetails: {
           ...prev.gameDetails,
           score: newScore,
-          result: result // This will update the result automatically
+          result
         }
       };
     });
