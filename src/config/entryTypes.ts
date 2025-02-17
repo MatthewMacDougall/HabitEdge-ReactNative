@@ -31,22 +31,22 @@ interface EntryTypeConfig {
 const commonMetrics: Metric[] = [
   {
     id: 'overallRating',
-    label: 'Overall Rating',
-    description: 'Rate your overall performance',
+    label: 'Performance Rating',
+    description: 'How would you grade your overall performance?',
     min: 1,
     max: 10
   },
   {
     id: 'energy',
     label: 'Energy Level',
-    description: 'How was your energy throughout?',
+    description: 'How would you rate your energy level?',
     min: 1,
     max: 10
   },
   {
     id: 'mentalFocus',
     label: 'Mental Focus',
-    description: 'How focused were you?',
+    description: 'How focused were you throughout?',
     min: 1,
     max: 10
   },
@@ -67,14 +67,14 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
       {
         id: 'teamwork',
         label: 'Teamwork',
-        description: 'How well did you work with your teammates?',
+        description: 'How would you rate your teamwork?',
         min: 1,
         max: 10
-      },
+      }, 
       {
-        id: 'performance',
-        label: 'Performance',
-        description: 'Rate your individual performance',
+        id: 'teamPlay',
+        label: 'Team Play',
+        description: 'Grade the overall team performance',
         min: 1,
         max: 10
       }
@@ -82,20 +82,25 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
     prompts: [
       {
         id: 'highlights',
-        label: 'Key Highlights',
-        placeholder: 'What were your best moments in the game?',
+        label: 'Positive',
+        placeholder: 'What did you do well?',
         required: true
       },
       {
         id: 'improvements',
         label: 'Areas for Improvement',
-        placeholder: 'What could you have done better?',
+        placeholder: 'What do you want to improve on moving forward?',
         required: true
       },
       {
         id: 'learnings',
         label: 'Key Learnings',
-        placeholder: 'What did you learn from this game?'
+        placeholder: 'What did this game reveal about your strengths and weaknesses?'
+      },
+      {
+        id: 'additionalNotes',
+        label: 'Additional Notes',
+        placeholder: 'Anything else you want to note about this game?',
       }
     ]
   },
@@ -106,14 +111,7 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
       {
         id: 'skillProgress',
         label: 'Skill Progress',
-        description: 'How much did you improve your skills?',
-        min: 1,
-        max: 10
-      },
-      {
-        id: 'effort',
-        label: 'Effort Level',
-        description: 'How much effort did you put in?',
+        description: 'How effective was the practice session in improving your skills?',
         min: 1,
         max: 10
       }
@@ -122,30 +120,63 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
       {
         id: 'focusAreas',
         label: 'Focus Areas',
-        placeholder: 'What skills or aspects did you work on?',
+        placeholder: 'What skills or aspects were emphasized today? Why are they important?',
         required: true
       },
       {
         id: 'improvements',
         label: 'Progress Made',
-        placeholder: 'What improvements did you notice?',
+        placeholder: 'What noticeable improvements did you see?',
         required: true
       },
       {
         id: 'nextSteps',
         label: 'Next Steps',
-        placeholder: 'What will you focus on next time?'
+        placeholder: 'What do you need to focus on to further improve these skills?',
+        required: true
+      },
+      {
+        id: 'additionalNotes',
+        label: 'Additional Notes',
+        placeholder: 'Anything else you want to note about this practice?',
       }
     ]
   },
   workout: {
     label: 'Workout',
     metrics: [
-      ...commonMetrics,
+      {
+        id: 'overallRating',
+        label: 'Performance Rating',
+        description: 'How would you grade the workout?',
+        min: 1,
+        max: 10
+      },
+      {
+        id: 'energyLevel',
+        label: 'Energy Level',
+        description: 'How strong and energized did you feel during the workout?',
+        min: 1,
+        max: 10
+      },
+      {
+        id: 'mentalFocus',
+        label: 'Mental Focus',
+        description: 'How focused were you throughout the workout?',
+        min: 1,
+        max: 10
+      },
+      {
+        id: 'effortLevel',
+        label: 'Effort Level',
+        description: 'How was your effort level during the workout?',
+        min: 1,
+        max: 10
+      },
       {
         id: 'intensity',
         label: 'Intensity',
-        description: 'How intense was your workout?',
+        description: 'How intense was the workout?',
         min: 1,
         max: 10
       },
@@ -167,31 +198,36 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
       {
         id: 'challenges',
         label: 'Challenges',
-        placeholder: 'What was challenging about this workout?',
+        placeholder: 'What was the hardest part of the workout, and how did you push through it?',
         required: true
       },
       {
-        id: 'adjustments',
-        label: 'Adjustments',
-        placeholder: 'What adjustments did you make during the workout?'
+        id: 'movingForward',
+        label: 'Looking Forward',
+        placeholder: 'What will you improve on moving forward?',
+        required: true
+      },
+      {
+        id: 'additionalNotes',
+        label: 'Additional Notes',
+        placeholder: 'Anything else you want to note about the workout?',
       }
     ]
   },
   film: {
     label: 'Film Session',
     metrics: [
-      ...commonMetrics,
       {
-        id: 'understanding',
-        label: 'Understanding',
-        description: 'How well did you understand the material?',
+        id: 'effectiveness',
+        label: 'Effectiveness',
+        description: 'How effective was the film session?',
         min: 1,
         max: 10
       },
       {
         id: 'application',
         label: 'Practical Application',
-        description: 'How applicable were the learnings?',
+        description: 'How applicable were the session to your game?',
         min: 1,
         max: 10
       }
@@ -206,13 +242,18 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
       {
         id: 'implementation',
         label: 'Implementation Plan',
-        placeholder: 'How will you apply these learnings?',
+        placeholder: 'What changes will you make in your game based on this session?',
         required: true
       },
       {
         id: 'questions',
         label: 'Questions/Clarifications',
-        placeholder: 'What questions came up during the session?'
+        placeholder: 'Did any questions come up during the session?'
+      },
+      {
+        id: 'additionalNotes',
+        label: 'Additional Notes',
+        placeholder: 'Anything else you want to note about the film session?',
       }
     ]
   }

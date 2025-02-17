@@ -14,10 +14,6 @@ export const sports: Sport[] = [
     name: 'Football'
   },
   {
-    id: 'golf',
-    name: 'Golf'
-  },
-  {
     id: 'hockey',
     name: 'Hockey'
   },
@@ -30,8 +26,8 @@ export const sports: Sport[] = [
     name: 'Soccer'
   },
   {
-    id: 'tennis',
-    name: 'Tennis'
+    id: 'softball',
+    name: 'Softball'
   },
   {
     id: 'volleyball',

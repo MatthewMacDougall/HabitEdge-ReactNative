@@ -112,7 +112,7 @@ export default function DashboardScreen() {
         <Text variant="headlineMedium" style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
         <Button
           mode="contained"
-          onPress={() => router.push('/(tabs)/journal')}
+          onPress={() => router.push('/(tabs)/entries')}
           icon="plus"
           style={styles.newEntryButton}
           labelStyle={styles.buttonLabel}
