@@ -21,10 +21,23 @@ export interface Prompt {
   required?: boolean;
 }
 
+export interface Media {
+  id: string;
+  label: string;
+  description: string;
+  acceptedFormats: string[];
+  maxSizeMB: number;
+  required: boolean;
+  multiple?: boolean;
+  allowLinks?: boolean;
+  allowUpload?: boolean;
+}
+
 interface EntryTypeConfig {
   label: string;
   metrics: Metric[];
   prompts: Prompt[];
+  media: Media[];
 }
 
 // Common metrics shared across all entry types
@@ -39,7 +52,7 @@ const commonMetrics: Metric[] = [
   {
     id: 'energy',
     label: 'Energy Level',
-    description: 'How would you rate your energy level?',
+    description: 'How was your energy level?',
     min: 1,
     max: 10
   },
@@ -56,6 +69,20 @@ const commonMetrics: Metric[] = [
     description: 'How would you rate your effort level?',
     min: 1,
     max: 10
+  }
+];
+
+const media: Media[] = [
+  {
+    id: 'mediaUpload',
+    label: 'Upload Media (optional)',
+    description: 'Attach any relevant media files (videos, photos, etc.)',
+    acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
+    maxSizeMB: 50,
+    required: false,
+    multiple: true,
+    allowLinks: true,
+    allowUpload: true
   }
 ];
 
@@ -102,6 +129,19 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         label: 'Additional Notes',
         placeholder: 'Anything else you want to note about this game?',
       }
+    ],
+    media: [
+      {
+        id: 'gameMedia',
+        label: 'Game Media',
+        description: 'Upload game footage, photos, or stats',
+        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
+        maxSizeMB: 50,
+        required: false,
+        multiple: true,
+        allowLinks: true,
+        allowUpload: true
+      }
     ]
   },
   practice: {
@@ -139,6 +179,19 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         id: 'additionalNotes',
         label: 'Additional Notes',
         placeholder: 'Anything else you want to note about this practice?',
+      }
+    ],
+    media: [
+      {
+        id: 'practiceMedia',
+        label: 'Practice Media',
+        description: 'Upload practice footage, photos, or stats',
+        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
+        maxSizeMB: 50,
+        required: false,
+        multiple: true,
+        allowLinks: true,
+        allowUpload: true
       }
     ]
   },
@@ -212,6 +265,19 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         label: 'Additional Notes',
         placeholder: 'Anything else you want to note about the workout?',
       }
+    ],
+    media: [
+      {
+        id: 'workoutMedia',
+        label: 'Workout Media',
+        description: 'Upload workout footage, photos, or stats',
+        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
+        maxSizeMB: 50,
+        required: false,
+        multiple: true,
+        allowLinks: true,
+        allowUpload: true
+      }
     ]
   },
   film: {
@@ -254,6 +320,19 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         id: 'additionalNotes',
         label: 'Additional Notes',
         placeholder: 'Anything else you want to note about the film session?',
+      }
+    ],
+    media: [
+      {
+        id: 'filmMedia',
+        label: 'Film Media',
+        description: 'Upload film footage, photos, or stats',
+        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
+        maxSizeMB: 50,
+        required: false,
+        multiple: true,
+        allowLinks: true,
+        allowUpload: true
       }
     ]
   }

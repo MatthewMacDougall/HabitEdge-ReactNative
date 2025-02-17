@@ -4,7 +4,9 @@ import {
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert,
+  ActionSheetIOS
 } from 'react-native'
 import {
   Text,
@@ -12,7 +14,10 @@ import {
   Button,
   SegmentedButtons,
   Card,
-  Divider
+  Divider,
+  IconButton,
+  Dialog,
+  Portal
 } from 'react-native-paper'
 import { Picker } from '@react-native-picker/picker'
 import Slider from '@react-native-community/slider'
@@ -21,10 +26,19 @@ import { Colors } from '@/constants/Colors'
 import Toast from 'react-native-toast-message'
 import { SharedStyles } from '@/constants/Styles'
 import { useTheme } from '@/contexts/ThemeContext'
+import * as DocumentPicker from 'expo-document-picker'
+import * as ImagePicker from 'expo-image-picker'
 
 interface GameScore {
   yourTeam: string;
   opponent: string;
+}
+
+interface MediaItem {
+  type: 'upload' | 'link';
+  url: string;
+  name?: string;
+  title?: string;
 }
 
 interface FormData {
@@ -34,6 +48,7 @@ interface FormData {
   gameDetails?: GameDetails & {
     score?: GameScore;
   };
+  media: Record<string, Array<MediaItem>>;
 }
 
 export default function JournalEntryScreen() {
@@ -41,11 +56,18 @@ export default function JournalEntryScreen() {
   const [formData, setFormData] = useState<FormData>({
     type: '',
     metrics: {},
-    prompts: {}
+    prompts: {},
+    media: {}
   })
 
   const { theme } = useTheme();
   const colors = Colors[theme];
+
+  const [linkDialogVisible, setLinkDialogVisible] = useState(false);
+  const [activeMediaId, setActiveMediaId] = useState<string>('');
+  const [linkInput, setLinkInput] = useState('');
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkError, setLinkError] = useState('');
 
   const handleMetricChange = (metricId: string, value: number) => {
     setFormData(prev => ({
@@ -179,7 +201,8 @@ export default function JournalEntryScreen() {
       setFormData({
         type: '',
         metrics: {},
-        prompts: {}
+        prompts: {},
+        media: {}
       })
     } catch (error) {
       Toast.show({
@@ -190,6 +213,142 @@ export default function JournalEntryScreen() {
       console.error(error)
     }
   }
+
+  const handlePhotoUpload = async (mediaId: string) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 1,
+      });
+
+      if (result.canceled) return;
+
+      const newMedia = result.assets.map(asset => ({
+        type: 'upload' as const,
+        url: asset.uri,
+        name: asset.uri.split('/').pop() || 'media'
+      }));
+
+      setFormData(prev => ({
+        ...prev,
+        media: {
+          ...prev.media,
+          [mediaId]: [...(prev.media[mediaId] || []), ...newMedia]
+        }
+      }));
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to upload photos'
+      });
+    }
+  };
+
+  const handleFileUpload = async (mediaId: string) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'video/*', 'application/pdf'],
+        multiple: true,
+        copyToCacheDirectory: true
+      });
+
+      if (result.canceled) return;
+
+      const newMedia = result.assets.map(asset => ({
+        type: 'upload' as const,
+        url: asset.uri,
+        name: asset.name
+      }));
+
+      setFormData(prev => ({
+        ...prev,
+        media: {
+          ...prev.media,
+          [mediaId]: [...(prev.media[mediaId] || []), ...newMedia]
+        }
+      }));
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to upload files'
+      });
+    }
+  };
+
+  const handleMediaUpload = async (mediaId: string) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Choose from Photos', 'Browse Files'],
+          cancelButtonIndex: 0,
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 1) {
+            await handlePhotoUpload(mediaId);
+          } else if (buttonIndex === 2) {
+            await handleFileUpload(mediaId);
+          }
+        }
+      );
+    } else {
+      // For Android, show a simple alert dialog
+      Alert.alert(
+        'Choose Upload Method',
+        'Select where to upload from',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Photos', onPress: () => handlePhotoUpload(mediaId) },
+          { text: 'Files', onPress: () => handleFileUpload(mediaId) },
+        ]
+      );
+    }
+  };
+
+  const handleAddLink = (mediaId: string) => {
+    setActiveMediaId(mediaId);
+    setLinkInput('');
+    setLinkTitle('');
+    setLinkError('');
+    setLinkDialogVisible(true);
+  };
+
+  const validateUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleLinkSubmit = () => {
+    if (!linkInput) return;
+    
+    if (!validateUrl(linkInput)) {
+      setLinkError('Please enter a valid URL');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      media: {
+        ...prev.media,
+        [activeMediaId]: [...(prev.media[activeMediaId] || []), {
+          type: 'link',
+          url: linkInput,
+          title: linkTitle || linkInput,
+        }]
+      }
+    }));
+
+    setLinkDialogVisible(false);
+    setLinkInput('');
+    setLinkTitle('');
+    setLinkError('');
+  };
 
   const selectedConfig = formData.type ? entryTypeConfigs[formData.type] : null
 
@@ -223,19 +382,23 @@ export default function JournalEntryScreen() {
                   onValueChange={(value: string) => setFormData({
                     type: value as EntryType,
                     metrics: {},
-                    prompts: {}
+                    prompts: {},
+                    media: {}
                   })}
-                  style={styles.picker}
-                  dropdownIconColor={colors.text}
-                  itemStyle={{ color: colors.text }}
+                  style={[styles.picker, { color: Colors.dark.text }]}
+                  dropdownIconColor={Colors.dark.text}
                 >
-                  <Picker.Item label="Select entry type" value="" />
+                  <Picker.Item 
+                    label="Select entry type" 
+                    value="" 
+                    color={Colors.dark.text}
+                  />
                   {Object.entries(entryTypeConfigs).map(([type, config]) => (
                     <Picker.Item
                       key={type}
                       label={config.label}
                       value={type}
-                      color={colors.text}
+                      color={Colors.dark.text}
                     />
                   ))}
                 </Picker>
@@ -364,6 +527,62 @@ export default function JournalEntryScreen() {
                     </View>
                   ))}
                 </View>
+
+                <Divider style={styles.divider} />
+                <View style={styles.formSection}>
+                  <Text style={styles.sectionTitle}>Media</Text>
+                  {selectedConfig.media.map((mediaConfig) => (
+                    <View key={mediaConfig.id} style={styles.mediaContainer}>
+                      <Text style={styles.label}>
+                        {mediaConfig.label}
+                        {mediaConfig.required && <Text style={styles.required}> *</Text>}
+                      </Text>
+                      <Text style={styles.description}>{mediaConfig.description}</Text>
+                      <View style={styles.mediaButtons}>
+                        {mediaConfig.allowUpload && (
+                          <Button 
+                            mode="outlined" 
+                            icon="upload"
+                            onPress={() => handleMediaUpload(mediaConfig.id)}
+                            style={styles.mediaButton}
+                          >
+                            Upload
+                          </Button>
+                        )}
+                        {mediaConfig.allowLinks && (
+                          <Button 
+                            mode="outlined" 
+                            icon="link"
+                            onPress={() => handleAddLink(mediaConfig.id)}
+                            style={styles.mediaButton}
+                          >
+                            Add Link
+                          </Button>
+                        )}
+                      </View>
+                      {formData.media[mediaConfig.id]?.map((media, index) => (
+                        <View key={index} style={styles.mediaItem}>
+                          <Text style={[styles.mediaName, { color: colors.text }]}>
+                            {media.type === 'upload' ? media.name : (media.title || media.url)}
+                          </Text>
+                          <IconButton
+                            icon="close"
+                            size={20}
+                            onPress={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                media: {
+                                  ...prev.media,
+                                  [mediaConfig.id]: prev.media[mediaConfig.id].filter((_, i) => i !== index)
+                                }
+                              }));
+                            }}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
               </>
             )}
 
@@ -377,6 +596,67 @@ export default function JournalEntryScreen() {
           </Card.Content>
         </Card>
       </ScrollView>
+
+      <Portal>
+        <Dialog 
+          visible={linkDialogVisible} 
+          onDismiss={() => {
+            setLinkDialogVisible(false);
+            setLinkInput('');
+            setLinkTitle('');
+            setLinkError('');
+          }}
+          style={[styles.linkDialog, { backgroundColor: colors.card }]}
+        >
+          <Dialog.Title style={{ color: colors.text }}>Add Media Link</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="URL"
+              value={linkInput}
+              onChangeText={(text) => {
+                setLinkInput(text);
+                setLinkError('');
+              }}
+              style={[styles.input, { backgroundColor: colors.input }]}
+              textColor={colors.text}
+              autoCapitalize="none"
+              autoComplete="url"
+              keyboardType="url"
+              error={!!linkError}
+            />
+            {linkError ? (
+              <Text style={[styles.errorText, { color: colors.error }]}>
+                {linkError}
+              </Text>
+            ) : null}
+            
+            <TextInput
+              label="Title (Optional)"
+              value={linkTitle}
+              onChangeText={setLinkTitle}
+              style={[styles.input, styles.linkInput, { backgroundColor: colors.input }]}
+              textColor={colors.text}
+              placeholder="Enter a descriptive title"
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => {
+              setLinkDialogVisible(false);
+              setLinkInput('');
+              setLinkTitle('');
+              setLinkError('');
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onPress={handleLinkSubmit}
+              disabled={!linkInput}
+            >
+              Add
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   )
 }
@@ -392,13 +672,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   pickerContainer: {
-    backgroundColor: Colors.dark.input,
     borderRadius: 8,
     overflow: 'hidden',
   },
   picker: {
-    backgroundColor: Colors.dark.input,
-    color: Colors.dark.text,
+    backgroundColor: 'transparent',
   },
   label: {
     fontSize: 16,
@@ -501,7 +779,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 20,
-    backgroundColor: Colors.dark.primary
+    marginBottom: 40, // Add extra padding at bottom
   },
   scoreContainer: {
     flexDirection: 'row',
@@ -554,5 +832,42 @@ const styles = StyleSheet.create({
   },
   form: {
     padding: 16,
+    paddingBottom: 80, // Add extra padding for scroll
+  },
+  mediaContainer: {
+    marginBottom: 20,
+  },
+  mediaButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  mediaButton: {
+    flex: 1,
+  },
+  mediaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 8,
+    marginTop: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.dark.input,
+  },
+  mediaName: {
+    flex: 1,
+    marginRight: 8,
+    fontSize: 14,
+  },
+  linkDialog: {
+    borderRadius: 12,
+  },
+  linkInput: {
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 8,
   },
 }) 
