@@ -22,6 +22,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SharedStyles } from '@/constants/Styles'
 import { loadTargets } from '@/utils/storage'
 import { Target } from '@/types/targets'
+import { useTheme } from '@/contexts/ThemeContext'
 
 // Mock data - replace with actual API calls
 const mockJournalEntries = [
@@ -56,6 +57,8 @@ export default function DashboardScreen() {
   const [streak, setStreak] = useState(0)
   const [recentEntries, setRecentEntries] = useState(mockJournalEntries)
   const [priorityTarget, setPriorityTarget] = useState<Target | null>(null)
+  const { theme } = useTheme();
+  const colors = Colors[theme];
 
   useEffect(() => {
     // Calculate streak stats when entries change
@@ -95,18 +98,18 @@ export default function DashboardScreen() {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
       data: [7, 8, 6, 9, 7, 8, 8],
-      color: () => Colors.dark.primary,
+      color: () => colors.primary,
       strokeWidth: 2
     }]
   }
 
   return (
     <ScrollView 
-      style={SharedStyles.screenContainer}
+      style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}
       contentContainerStyle={SharedStyles.contentContainer}
     >
       <View style={styles.headerContainer}>
-        <Text variant="headlineMedium" style={styles.headerTitle}>Dashboard</Text>
+        <Text variant="headlineMedium" style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
         <Button
           mode="contained"
           onPress={() => router.push('/(tabs)/journal')}
@@ -119,15 +122,15 @@ export default function DashboardScreen() {
       </View>
 
       <View style={styles.statsGrid}>
-        <Surface style={[styles.statCard, { backgroundColor: Colors.dark.primary }]}>
-          <MaterialCommunityIcons name="fire" size={32} color={Colors.dark.text} style={styles.statIcon} />
+        <Surface style={[styles.statCard, { backgroundColor: colors.primary }]}>
+          <MaterialCommunityIcons name="fire" size={32} color={colors.text} style={styles.statIcon} />
           <Text variant="titleMedium" style={styles.statLabel}>Current Streak</Text>
           <Text variant="headlineLarge" style={styles.statValue}>{streak}</Text>
           <Text style={styles.statUnit}>days</Text>
         </Surface>
 
-        <Surface style={[styles.statCard, { backgroundColor: Colors.dark.secondary }]}>
-          <MaterialCommunityIcons name="calendar-check" size={32} color={Colors.dark.text} style={styles.statIcon} />
+        <Surface style={[styles.statCard, { backgroundColor: colors.secondary }]}>
+          <MaterialCommunityIcons name="calendar-check" size={32} color={colors.text} style={styles.statIcon} />
           <Text variant="titleMedium" style={styles.statLabel}>Weekly Entries</Text>
           <Text variant="headlineLarge" style={styles.statValue}>{recentEntries.length}</Text>
           <Text style={styles.statUnit}>entries</Text>
@@ -148,14 +151,14 @@ export default function DashboardScreen() {
               <MaterialCommunityIcons 
                 name="star" 
                 size={24} 
-                color={Colors.dark.primary} 
+                color={colors.primary} 
               />
             </View>
 
             <View style={styles.progressContainer}>
               <ProgressBar 
                 progress={calculateProgress(priorityTarget) / 100} 
-                color={Colors.dark.primary}
+                color={colors.primary}
                 style={styles.progressBar}
               />
               <Text style={styles.deadline}>
@@ -166,45 +169,7 @@ export default function DashboardScreen() {
         </Card>
       )}
 
-      <Card 
-        style={[SharedStyles.card, styles.chartCard]}
-        onPress={() => router.push('/(tabs)/insights')}
-      >
-        <Card.Content>
-          <View style={styles.chartHeader}>
-            <Text variant="titleLarge" style={styles.chartTitle}>Performance Trend</Text>
-            <IconButton
-              icon="chevron-right"
-              iconColor={Colors.dark.primary}
-            />
-          </View>
-          <LineChart
-            data={chartData}
-            width={Dimensions.get('window').width - 48}
-            height={220}
-            chartConfig={{
-              backgroundColor: Colors.dark.card,
-              backgroundGradientFrom: Colors.dark.card,
-              backgroundGradientTo: Colors.dark.card,
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
-              labelColor: () => Colors.dark.text,
-              style: {
-                borderRadius: 16
-              },
-              propsForDots: {
-                r: "6",
-                strokeWidth: "2",
-                stroke: Colors.dark.primary
-              }
-            }}
-            bezier
-            style={styles.chart}
-          />
-        </Card.Content>
-      </Card>
-
-      <Card style={SharedStyles.card}>
+<Card style={SharedStyles.card}>
         <Card.Title 
           title="Recent Entries"
           titleStyle={styles.cardTitle}
@@ -212,7 +177,7 @@ export default function DashboardScreen() {
             <IconButton
               {...props}
               icon="chevron-right"
-              iconColor={Colors.dark.primary}
+              iconColor={colors.primary}
               onPress={() => router.push('/(tabs)/journal')}
             />
           )}
@@ -237,6 +202,46 @@ export default function DashboardScreen() {
           ))}
         </Card.Content>
       </Card>
+
+      <Card 
+        style={[SharedStyles.card, styles.chartCard]}
+        onPress={() => router.push('/screens/insights')}
+      >
+        <Card.Content style={styles.chartContent}>
+          <View style={styles.chartHeader}>
+            <Text variant="titleMedium" style={styles.cardTitle}>Performance Trend</Text>
+            <IconButton
+              icon="chevron-right"
+              iconColor={colors.primary}
+            />
+          </View>
+          <View style={styles.chartWrapper}>
+            <LineChart
+              data={chartData}
+              width={Dimensions.get('window').width - 64}
+              height={220}
+              chartConfig={{
+                backgroundColor: colors.card,
+                backgroundGradientFrom: colors.card,
+                backgroundGradientTo: colors.card,
+                decimalPlaces: 0,
+                color: (opacity = 1) => `rgba(250, 105, 105, ${opacity})`,
+                labelColor: () => colors.text,
+                style: {
+                  borderRadius: 16
+                },
+                propsForDots: {
+                  r: "6",
+                  strokeWidth: "2",
+                  stroke: colors.primary
+                }
+              }}
+              bezier
+              style={styles.chart}
+            />
+          </View>
+        </Card.Content>
+      </Card>
     </ScrollView>
   )
 }
@@ -249,7 +254,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   headerTitle: {
-    color: Colors.dark.text,
     fontWeight: 'bold',
   },
   newEntryButton: {
@@ -303,14 +307,15 @@ const styles = StyleSheet.create({
   chartCard: {
     marginBottom: 24,
   },
-  chartTitle: {
-    color: Colors.dark.text,
-    marginBottom: 16,
-    fontWeight: 'bold',
+  chartContent: {
+    paddingHorizontal: 0,
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   cardTitle: {
     color: Colors.dark.text,
@@ -338,11 +343,13 @@ const styles = StyleSheet.create({
   metric: {
     color: Colors.dark.textSecondary,
   },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  chartWrapper: {
     alignItems: 'center',
-    marginBottom: 16,
+    paddingHorizontal: 12,
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
   },
   priorityCard: {
     marginBottom: 24,

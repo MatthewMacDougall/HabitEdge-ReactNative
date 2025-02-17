@@ -22,6 +22,7 @@ import { Colors } from '@/constants/Colors';
 import { SharedStyles } from '@/constants/Styles';
 import { EntryType, entryTypeConfigs } from '@/src/config/entryTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 interface JournalEntry {
   id: string;
@@ -51,6 +52,8 @@ export default function JournalListScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [userData, setUserData] = useState<UserData | null>(null);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme];
 
   const loadEntries = async () => {
     try {
@@ -141,19 +144,20 @@ export default function JournalListScreen() {
   }
 
   return (
-    <View style={SharedStyles.screenContainer}>
-      <View style={styles.headerContainer}>
-        <Text variant="headlineMedium" style={styles.title}>
+    <View style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
+        <Text 
+          variant="headlineMedium" 
+          style={[styles.headerTitle, { color: colors.text }]}
+        >
           {userData?.name ? `${userData.name}'s Journal` : 'My Journal'}
         </Text>
         <Button
           mode="contained"
           onPress={() => router.push('/(tabs)/entries')}
           icon="plus"
-          style={styles.newButton}
-          contentStyle={styles.buttonContent}
         >
-          Add New Entry
+          New Entry
         </Button>
       </View>
 
@@ -182,59 +186,17 @@ export default function JournalListScreen() {
       >
         {filteredEntries.length > 0 ? (
           filteredEntries.map((entry) => (
-            <Card key={entry.id} style={[SharedStyles.card, styles.entryCard]}>
-              <Card.Content>
-                <View style={styles.entryHeader}>
-                  <Chip
-                    style={[styles.typeChip, { backgroundColor: getEntryTypeColor(entry.type) }]}
-                  >
-                    {entryTypeConfigs[entry.type].label}
-                  </Chip>
-                  <Text style={styles.date}>
-                    {format(new Date(entry.timestamp), 'MMM d, yyyy')}
-                  </Text>
-                </View>
-
-                {entry.gameDetails && (
-                  <View style={styles.gameDetails}>
-                    <Text style={styles.opponent}>vs. {entry.gameDetails.opponent}</Text>
-                    {entry.gameDetails.score && (
-                      <Text style={styles.score}>
-                        {entry.gameDetails.score.yourTeam} - {entry.gameDetails.score.opponent}
-                      </Text>
-                    )}
-                    {entry.gameDetails.result && (
-                      <Chip
-                        style={[
-                          styles.resultChip,
-                          {
-                            backgroundColor:
-                              entry.gameDetails.result === 'win' ? Colors.dark.primary :
-                              entry.gameDetails.result === 'loss' ? Colors.dark.error :
-                              Colors.dark.secondary
-                          }
-                        ]}
-                      >
-                        {entry.gameDetails.result.toUpperCase()}
-                      </Chip>
-                    )}
-                  </View>
-                )}
-
-                <Divider style={styles.divider} />
-
-                <View style={styles.metrics}>
-                  {Object.entries(entry.metrics).map(([key, value]) => (
-                    <View key={key} style={styles.metric}>
-                      <Text style={styles.metricLabel}>
-                        {entryTypeConfigs[entry.type].metrics.find(m => m.id === key)?.label || key}
-                      </Text>
-                      <Text style={styles.metricValue}>{value}/10</Text>
-                    </View>
-                  ))}
-                </View>
-              </Card.Content>
-            </Card>
+            <Surface 
+              key={entry.id} 
+              style={[styles.entryCard, { backgroundColor: colors.card }]}
+            >
+              <Text style={[styles.entryTitle, { color: colors.text }]}>
+                {entry.prompts.highlights || entryTypeConfigs[entry.type].label}
+              </Text>
+              <Text style={[styles.entryDate, { color: colors.textSecondary }]}>
+                {format(new Date(entry.timestamp), 'MMM d, yyyy')}
+              </Text>
+            </Surface>
           ))
         ) : (
           renderEmptyState()
@@ -251,21 +213,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.dark.background,
   },
-  headerContainer: {
+  header: {
     padding: 16,
     gap: 12,
   },
-  title: {
-    color: Colors.dark.text,
+  headerTitle: {
     fontWeight: 'bold',
     fontSize: 28,
-  },
-  newButton: {
-    backgroundColor: Colors.dark.primary,
-    borderRadius: 8,
-  },
-  buttonContent: {
-    height: 48,
   },
   searchBar: {
     margin: 16,
@@ -286,13 +240,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark.card,
   },
   emptyStateTitle: {
-    color: Colors.dark.text,
     fontSize: 20,
     fontWeight: 'bold',
     marginTop: 16,
   },
   emptyStateDescription: {
-    color: Colors.dark.textSecondary,
     textAlign: 'center',
     marginVertical: 8,
   },
@@ -303,59 +255,11 @@ const styles = StyleSheet.create({
   entryCard: {
     marginBottom: 12,
   },
-  entryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  typeChip: {
-    borderRadius: 16,
-  },
-  date: {
-    color: Colors.dark.textSecondary,
-  },
-  gameDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  opponent: {
-    color: Colors.dark.text,
+  entryTitle: {
     fontSize: 16,
     fontWeight: '500',
   },
-  score: {
-    color: Colors.dark.text,
-    fontSize: 16,
-  },
-  resultChip: {
-    borderRadius: 16,
-  },
-  divider: {
-    backgroundColor: Colors.dark.border,
-    marginVertical: 12,
-  },
-  metrics: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  metric: {
-    backgroundColor: Colors.dark.input,
-    padding: 8,
-    borderRadius: 8,
-    minWidth: 100,
-  },
-  metricLabel: {
-    color: Colors.dark.textSecondary,
+  entryDate: {
     fontSize: 12,
-    marginBottom: 4,
-  },
-  metricValue: {
-    color: Colors.dark.text,
-    fontSize: 16,
-    fontWeight: '500',
   },
 });

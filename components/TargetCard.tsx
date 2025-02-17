@@ -17,6 +17,7 @@ import { Target } from '@/types/targets';
 import { Colors } from '@/constants/Colors';
 import { format } from 'date-fns';
 import { useState } from 'react';
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 interface TargetCardProps {
   /** The target to display */
@@ -55,14 +56,16 @@ const calculateProgress = (target: Target): number => {
 
 const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgress, onViewProgress, onTogglePriority }) => {
   const [menuVisible, setMenuVisible] = useState(false);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme];
   const daysRemaining = getDaysRemaining(target.deadline);
   const progress = calculateProgress(target);
 
   return (
-    <Card style={styles.targetCard}>
+    <Card style={[styles.targetCard, { backgroundColor: colors.card }]}>
       <Card.Content>
         <View style={styles.header}>
-          <Text style={styles.title}>{target.title}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{target.title}</Text>
           <Menu
             visible={menuVisible}
             onDismiss={() => setMenuVisible(false)}
@@ -103,7 +106,7 @@ const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgres
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
-          <Text style={styles.progressText}>
+          <Text style={[styles.progressText, { color: colors.text }]}>
             {target.type === 'numeric' 
               ? `${target.progress.reduce((sum, p) => sum + p.value, 0)} / ${target.target} ${target.unit || ''}`
               : target.completed ? 'Completed' : 'In Progress'
@@ -112,14 +115,14 @@ const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgres
         </View>
 
         {target.plan && (
-          <View style={styles.planContainer}>
-            <Text style={styles.planLabel}>Course of Action:</Text>
-            <Text style={styles.planText} numberOfLines={3}>{target.plan}</Text>
+          <View style={[styles.planContainer, { backgroundColor: colors.input }]}>
+            <Text style={[styles.planLabel, { color: colors.textSecondary }]}>Course of Action:</Text>
+            <Text style={[styles.planText, { color: colors.text }]} numberOfLines={3}>{target.plan}</Text>
           </View>
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.deadline}>
+          <Text style={[styles.deadline, { color: colors.textSecondary }]}>
             {daysRemaining > 0 
               ? `${daysRemaining} days remaining`
               : 'Deadline passed'
@@ -141,10 +144,8 @@ const styles = StyleSheet.create({
   targetCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: Colors.dark.card,
   },
   title: {
-    color: Colors.dark.text,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -157,16 +158,13 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 12,
     padding: 12,
-    backgroundColor: Colors.dark.input,
     borderRadius: 8,
   },
   planLabel: {
-    color: Colors.dark.textSecondary,
     fontSize: 14,
     marginBottom: 4,
   },
   planText: {
-    color: Colors.dark.text,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -185,7 +183,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dark.progressFill,
   },
   progressText: {
-    color: Colors.dark.text,
     fontSize: 14,
     marginLeft: 8,
   },
@@ -196,7 +193,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deadline: {
-    color: Colors.dark.textSecondary,
     fontSize: 14,
   },
 });

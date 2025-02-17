@@ -22,8 +22,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { InsightCard, SportMetric } from '@/types/insights'
 import { format, subDays } from 'date-fns'
 import { SharedStyles } from '@/constants/Styles'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export default function InsightsScreen() {
+  const { theme } = useTheme()
+  const colors = Colors[theme]
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('week')
@@ -121,7 +124,7 @@ export default function InsightsScreen() {
 
   return (
     <ScrollView 
-      style={SharedStyles.screenContainer}
+      style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}
       contentContainerStyle={SharedStyles.contentContainer}
       refreshControl={
         <RefreshControl
@@ -131,7 +134,14 @@ export default function InsightsScreen() {
         />
       }
     >
-      <Text variant="headlineMedium" style={styles.headerTitle}>Insights</Text>
+      <View style={styles.header}>
+        <Text 
+          variant="headlineMedium" 
+          style={[styles.headerTitle, { color: colors.text }]}
+        >
+          Insights
+        </Text>
+      </View>
 
       <SegmentedButtons
         value={timeRange}
@@ -144,63 +154,80 @@ export default function InsightsScreen() {
         style={styles.timeRange}
       />
 
-      {metrics.map(metric => (
-        <Card key={metric.id} style={[SharedStyles.card, styles.metricCard]}>
-          <Card.Title
-            title={metric.label}
-            titleStyle={styles.cardTitle}
-            right={() => (
-              <Chip 
-                icon={metric.change >= 0 ? 'trending-up' : 'trending-down'}
-                style={[
-                  styles.changeChip,
-                  { 
-                    backgroundColor: metric.change >= 0 
-                      ? Colors.dark.primary 
-                      : Colors.dark.error 
-                  }
-                ]}
-              >
-                {metric.change >= 0 ? '+' : ''}{metric.change}%
-              </Chip>
-            )}
+      {/* Performance Overview Card */}
+      <Card style={[SharedStyles.card, styles.overviewCard, { backgroundColor: colors.card }]}>
+        <Card.Content>
+          <Text 
+            variant="titleLarge" 
+            style={[styles.cardTitle, { color: colors.text }]}
+          >
+            Performance Overview
+          </Text>
+          <LineChart
+            data={{
+              labels: metrics.map(m => format(new Date(m.trend[0].date), 'MMM d')),
+              datasets: [{
+                data: metrics.map(m => m.trend[0].value),
+                strokeWidth: 2
+              }]
+            }}
+            width={Dimensions.get('window').width - 48}
+            height={220}
+            chartConfig={{
+              backgroundColor: colors.card,
+              backgroundGradientFrom: colors.card,
+              backgroundGradientTo: colors.card,
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
+              labelColor: () => colors.text,
+              style: { borderRadius: 16 },
+              propsForDots: {
+                r: "6",
+                strokeWidth: "2",
+                stroke: colors.primary
+              }
+            }}
+            bezier
+            style={styles.chart}
           />
-          <Card.Content>
-            <LineChart
-              data={{
-                labels: metric.trend.map(t => format(new Date(t.date), 'MMM d')),
-                datasets: [{
-                  data: metric.trend.map(t => t.value),
-                  strokeWidth: 2
-                }]
-              }}
-              width={Dimensions.get('window').width - 48}
-              height={220}
-              chartConfig={{
-                backgroundColor: Colors.dark.card,
-                backgroundGradientFrom: Colors.dark.card,
-                backgroundGradientTo: Colors.dark.card,
-                decimalPlaces: 1,
-                color: (opacity = 1) => `rgba(255, 107, 107, ${opacity})`,
-                labelColor: () => Colors.dark.text,
-                style: { borderRadius: 16 },
-                propsForDots: {
-                  r: "6",
-                  strokeWidth: "2",
-                  stroke: Colors.dark.primary
-                }
-              }}
-              bezier
-              style={styles.chart}
-            />
-          </Card.Content>
-        </Card>
-      ))}
+        </Card.Content>
+      </Card>
+
+      {/* Stats Grid */}
+      <View style={styles.statsGrid}>
+        <Surface style={[styles.statCard, { backgroundColor: colors.card }]}>
+          <MaterialCommunityIcons 
+            name="trending-up" 
+            size={32} 
+            color={colors.text} 
+          />
+          <Text style={[styles.statLabel, { color: colors.text }]}>
+            Avg Performance
+          </Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {metrics.length > 0 ? metrics[0].value.toFixed(1) : 'N/A'}
+          </Text>
+        </Surface>
+
+        <Surface style={[styles.statCard, { backgroundColor: colors.card }]}>
+          <MaterialCommunityIcons 
+            name="calendar-check" 
+            size={32} 
+            color={colors.text} 
+          />
+          <Text style={[styles.statLabel, { color: colors.text }]}>
+            Total Entries
+          </Text>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {metrics.length}
+          </Text>
+        </Surface>
+      </View>
 
       <Text variant="titleLarge" style={styles.sectionTitle}>Recent Insights</Text>
 
       {insights.map(insight => (
-        <Surface key={insight.id} style={[styles.insightCard]}>
+        <Surface key={insight.id} style={[styles.insightCard, { backgroundColor: colors.card }]}>
           <View style={styles.insightHeader}>
             <MaterialCommunityIcons
               name={getInsightIcon(insight.type)}
@@ -235,28 +262,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
+  header: {
+    padding: 16,
+  },
   headerTitle: {
-    color: Colors.dark.text,
     fontWeight: 'bold',
-    marginBottom: 16
   },
   timeRange: {
     marginBottom: 16
   },
-  metricCard: {
-    marginBottom: 16
+  overviewCard: {
+    marginBottom: 24,
   },
   cardTitle: {
-    color: Colors.dark.text,
-    fontWeight: '600'
+    marginBottom: 16,
+    fontWeight: 'bold',
   },
   chart: {
     marginVertical: 8,
-    borderRadius: 16
+    borderRadius: 16,
   },
-  changeChip: {
-    marginRight: 16,
-    borderRadius: 16
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 16,
+    padding: 16,
+  },
+  statCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 14,
+    marginVertical: 8,
+    textAlign: 'center',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   sectionTitle: {
     color: Colors.dark.text,

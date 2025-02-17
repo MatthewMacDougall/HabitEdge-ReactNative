@@ -32,6 +32,7 @@ import { useFocusEffect } from '@react-navigation/native'
 import { SharedStyles } from '@/constants/Styles'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
 import { default as TargetCard } from '@/components/TargetCard'
+import { useColorScheme } from '@/hooks/useColorScheme'
 
 /**
  * TargetsScreen Component
@@ -108,6 +109,8 @@ export default function TargetsScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showProgressLog, setShowProgressLog] = useState(false)
   const [menuVisible, setMenuVisible] = useState(false)
+  const colorScheme = useColorScheme()
+  const colors = Colors[colorScheme]
 
   useFocusEffect(
     useCallback(() => {
@@ -531,21 +534,24 @@ export default function TargetsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.dark.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     )
   }
 
   return (
-    <View style={SharedStyles.screenContainer}>
-      <View style={styles.headerContainer}>
-        <Text variant="headlineMedium" style={styles.headerTitle}>Targets</Text>
+    <View style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
+        <Text 
+          variant="headlineMedium" 
+          style={[styles.headerTitle, { color: colors.text }]}
+        >
+          Targets
+        </Text>
         <Button
           mode="contained"
           onPress={() => setShowModal(true)}
           icon="plus"
-          style={styles.addButton}
-          labelStyle={styles.buttonLabel}
         >
           Add Target
         </Button>
@@ -553,7 +559,7 @@ export default function TargetsScreen() {
 
       <SegmentedButtons
         value={filterType}
-        onValueChange={value => setFilterType(value as TargetFilter)}
+        onValueChange={(value) => setFilterType(value as TargetFilter)}
         buttons={[
           { value: 'all', label: 'All' },
           { value: 'ongoing', label: 'In Progress' },
@@ -569,7 +575,6 @@ export default function TargetsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.dark.primary}
           />
         }
       >
@@ -578,7 +583,7 @@ export default function TargetsScreen() {
             <MaterialCommunityIcons 
               name="target" 
               size={48} 
-              color={Colors.dark.textSecondary} 
+              color={colors.textSecondary} 
             />
             <Text style={styles.emptyStateText}>
               No targets found. Tap the "Add Target" button to create one!
@@ -609,17 +614,27 @@ export default function TargetsScreen() {
             setIsEditMode(false)
             resetNewTarget()
           }}
-          contentContainerStyle={[styles.modal, { marginTop: 40 }]}
+          contentContainerStyle={[
+            styles.modal, 
+            { 
+              backgroundColor: colors.card,
+              borderTopColor: colors.border 
+            }
+          ]}
         >
           <ScrollView>
-            <Text variant="titleLarge" style={styles.modalTitle}>
+            <Text 
+              variant="titleLarge" 
+              style={[styles.modalTitle, { color: colors.text }]}
+            >
               {isEditMode ? 'Edit Target' : 'Add Target'}
             </Text>
             <TextInput
-              label="Target Title"
+              label="Title"
               value={newTarget.title || ''}
-              onChangeText={(value) => setNewTarget({ ...newTarget, title: value })}
-              style={styles.input}
+              onChangeText={(value) => setNewTarget(prev => ({ ...prev, title: value }))}
+              style={[styles.input, { backgroundColor: colors.input }]}
+              textColor={colors.text}
             />
 
             <SegmentedButtons
@@ -706,8 +721,8 @@ export default function TargetsScreen() {
                   <Button
                     mode="outlined"
                     onPress={() => setShowDeleteConfirm(true)}
-                    style={[styles.modalButton, styles.deleteButton]}
-                    textColor={Colors.dark.error}
+                    style={[styles.modalButton, styles.deleteButton, { borderColor: colors.error }]}
+                    textColor={colors.error}
                   >
                     Delete
                   </Button>
@@ -763,10 +778,14 @@ export default function TargetsScreen() {
             setProgressUpdate('');
             setProgressNote('');
           }}
-          contentContainerStyle={[styles.modal, styles.progressModal, { marginTop: 60 }]}
+          contentContainerStyle={[
+            styles.modal, 
+            styles.progressModal, 
+            { marginTop: 60, backgroundColor: colors.card }
+          ]}
         >
-          <View style={styles.modalHeader}>
-            <Text variant="titleLarge" style={styles.modalTitle}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               {selectedTarget?.type === 'boolean' ? 'Update Status' : 'Log Progress'}
             </Text>
             <IconButton
@@ -782,71 +801,43 @@ export default function TargetsScreen() {
           </View>
           
           <ScrollView style={styles.modalScroll}>
-            <Text style={styles.modalSubtitle}>{selectedTarget?.title}</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.text }]}>
+              {selectedTarget?.title}
+            </Text>
 
-            {selectedTarget?.type === 'boolean' ? (
-              <View style={styles.booleanProgress}>
-                <Button
-                  mode={selectedTarget.completed ? 'outlined' : 'contained'}
-                  onPress={() => handleBooleanProgress(false)}
-                  style={styles.booleanButton}
-                >
-                  In Progress
-                </Button>
-                <Button
-                  mode={selectedTarget.completed ? 'contained' : 'outlined'}
-                  onPress={() => handleBooleanProgress(true)}
-                  style={styles.booleanButton}
-                >
-                  Completed
-                </Button>
-              </View>
-            ) : (
-              <>
-                <TextInput
-                  label={`Progress Amount${selectedTarget?.unit ? ` (${selectedTarget.unit})` : ''}`}
-                  value={progressUpdate}
-                  onChangeText={setProgressUpdate}
-                  keyboardType="numeric"
-                  style={styles.input}
-                />
-                
-                <TextInput
-                  label="Note (optional)"
-                  value={progressNote}
-                  onChangeText={setProgressNote}
-                  style={styles.input}
-                  multiline
-                />
-
-                {selectedTarget?.target && (
-                  <Text style={styles.modalHelper}>
-                    Target: {selectedTarget.target}{selectedTarget.unit ? ` ${selectedTarget.unit}` : ''}
-                    {'\n'}Current Total: {calculateTotal(selectedTarget.progress)}
-                  </Text>
-                )}
-              </>
-            )}
+            <TextInput
+              label="Progress"
+              value={progressUpdate}
+              onChangeText={setProgressUpdate}
+              keyboardType="numeric"
+              style={[styles.input, { backgroundColor: colors.input }]}
+              textColor={colors.text}
+            />
+            
+            <TextInput
+              label="Note (Optional)"
+              value={progressNote}
+              onChangeText={setProgressNote}
+              style={[styles.input, { backgroundColor: colors.input }]}
+              textColor={colors.text}
+              multiline
+            />
           </ScrollView>
-
-          <View style={styles.singleButtonContainer}>
-            <Button
-              mode="contained"
-              onPress={handleUpdateProgress}
-              style={styles.fullWidthButton}
-            >
-              {selectedTarget?.type === 'boolean' ? 'Update' : 'Log Progress'}
-            </Button>
-          </View>
         </Modal>
 
         <Modal
           visible={showDeleteConfirm}
           onDismiss={() => setShowDeleteConfirm(false)}
-          contentContainerStyle={[styles.modal, styles.confirmModal]}
+          contentContainerStyle={[
+            styles.modal, 
+            styles.confirmModal,
+            { backgroundColor: colors.card }
+          ]}
         >
-          <Text variant="titleLarge" style={styles.modalTitle}>Delete Target</Text>
-          <Text style={styles.confirmText}>
+          <Text style={[styles.modalTitle, { color: colors.text }]}>
+            Delete Target
+          </Text>
+          <Text style={[styles.confirmText, { color: colors.text }]}>
             Are you sure you want to delete this target? This action cannot be undone.
           </Text>
           <View style={styles.confirmButtons}>
@@ -864,7 +855,7 @@ export default function TargetsScreen() {
                 handleDeleteTarget();
               }}
               style={[styles.modalButton, styles.confirmDeleteButton]}
-              buttonColor={Colors.dark.error}
+              buttonColor={colors.error}
             >
               Delete
             </Button>
@@ -877,10 +868,14 @@ export default function TargetsScreen() {
             setShowProgressLog(false);
             setSelectedTarget(null);
           }}
-          contentContainerStyle={[styles.modal, styles.progressLogModal]}
+          contentContainerStyle={[
+            styles.modal, 
+            styles.progressLogModal,
+            { backgroundColor: colors.card }
+          ]}
         >
-          <View style={styles.modalHeader}>
-            <Text variant="titleLarge" style={styles.modalTitle}>Progress Log</Text>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Progress Log</Text>
             <IconButton
               icon="close"
               size={24}
@@ -893,23 +888,25 @@ export default function TargetsScreen() {
 
           <ScrollView style={styles.modalScroll}>
             {selectedTarget?.progress.length === 0 ? (
-              <Text style={styles.emptyLogText}>No progress entries yet.</Text>
+              <Text style={[styles.emptyLogText, { color: colors.textSecondary }]}>
+                No progress entries yet.
+              </Text>
             ) : (
-              selectedTarget?.progress
-                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                .map((entry, index) => (
-                  <View key={index} style={styles.logEntry}>
-                    <Text style={styles.logDate}>
-                      {format(new Date(entry.timestamp), 'MMM d, yyyy')}
+              selectedTarget?.progress.map((entry, index) => (
+                <View key={index} style={[styles.logEntry, { backgroundColor: colors.input }]}>
+                  <Text style={[styles.logDate, { color: colors.textSecondary }]}>
+                    {format(new Date(entry.timestamp), 'MMM d, yyyy')}
+                  </Text>
+                  <Text style={[styles.logValue, { color: colors.text }]}>
+                    {entry.value} {selectedTarget.unit}
+                  </Text>
+                  {entry.note && (
+                    <Text style={[styles.logNote, { color: colors.textSecondary }]}>
+                      {entry.note}
                     </Text>
-                    <Text style={styles.logValue}>
-                      {entry.value} {selectedTarget.unit}
-                    </Text>
-                    {entry.note && (
-                      <Text style={styles.logNote}>{entry.note}</Text>
-                    )}
-                  </View>
-                ))
+                  )}
+                </View>
+              ))
             )}
           </ScrollView>
         </Modal>
@@ -923,28 +920,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.dark.background,
   },
-  headerContainer: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
   },
   headerTitle: {
-    color: Colors.dark.text,
     fontWeight: 'bold',
   },
-  addButton: {
-    backgroundColor: Colors.dark.primary,
-    borderRadius: 8,
-  },
-  buttonLabel: {
-    color: Colors.dark.text,
-  },
   filterButtons: {
-    marginHorizontal: 16,
-    marginBottom: 16,
+    margin: 16,
   },
   targetsList: {
     flex: 1,
@@ -952,7 +939,6 @@ const styles = StyleSheet.create({
   targetCard: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: Colors.dark.card,
   },
   targetHeader: {
     flexDirection: 'row',
@@ -960,12 +946,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   targetTitle: {
-    color: Colors.dark.text,
     fontSize: 18,
     fontWeight: '600',
   },
   targetSubtitle: {
-    color: Colors.dark.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
@@ -974,58 +958,48 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: Colors.dark.border,
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.dark.primary,
     borderRadius: 4,
   },
   progressText: {
     marginTop: 4,
     textAlign: 'right',
-    color: Colors.dark.textSecondary,
   },
   emptyState: {
     margin: 24,
     padding: 24,
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: Colors.dark.card,
   },
   emptyStateText: {
     marginTop: 16,
     textAlign: 'center',
-    color: Colors.dark.textSecondary,
     fontSize: 16,
   },
   modal: {
     margin: 20,
     padding: 20,
     borderRadius: 12,
-    backgroundColor: Colors.dark.card,
     maxHeight: '80%',
   },
   modalTitle: {
-    color: Colors.dark.text,
     marginBottom: 16,
     fontWeight: 'bold',
   },
   modalSubtitle: {
-    color: Colors.dark.text,
     fontSize: 16,
     marginBottom: 16,
   },
   modalHelper: {
-    color: Colors.dark.textSecondary,
     fontSize: 14,
     marginBottom: 16,
   },
   input: {
     marginBottom: 16,
-    backgroundColor: Colors.dark.input,
   },
   typeButtons: {
     marginBottom: 12,
@@ -1041,7 +1015,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.dark.border,
   },
   editButtons: {
     flexDirection: 'row',
@@ -1057,7 +1030,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalView: {
-    backgroundColor: Colors.dark.card,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -1079,7 +1051,6 @@ const styles = StyleSheet.create({
   },
   datePickerModal: {
     width: 340,
-    backgroundColor: Colors.dark.card,
     borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
@@ -1128,7 +1099,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.dark.border,
   },
   modalScroll: {
     padding: 20,
@@ -1148,7 +1118,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   deleteButton: {
-    borderColor: Colors.dark.error,
     minWidth: 100,
   },
   confirmModal: {
@@ -1156,7 +1125,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   confirmText: {
-    color: Colors.dark.text,
     fontSize: 16,
     marginBottom: 24,
     textAlign: 'center',

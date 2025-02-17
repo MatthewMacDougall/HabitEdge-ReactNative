@@ -20,6 +20,7 @@ import { EntryType, entryTypeConfigs, GameDetails } from '@/src/config/entryType
 import { Colors } from '@/constants/Colors'
 import Toast from 'react-native-toast-message'
 import { SharedStyles } from '@/constants/Styles'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface GameScore {
   yourTeam: string;
@@ -36,11 +37,15 @@ interface FormData {
 }
 
 export default function JournalEntryScreen() {
+  const [title, setTitle] = useState('');
   const [formData, setFormData] = useState<FormData>({
     type: '',
     metrics: {},
     prompts: {}
   })
+
+  const { theme } = useTheme();
+  const colors = Colors[theme];
 
   const handleMetricChange = (metricId: string, value: number) => {
     setFormData(prev => ({
@@ -189,16 +194,25 @@ export default function JournalEntryScreen() {
   const selectedConfig = formData.type ? entryTypeConfigs[formData.type] : null
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={SharedStyles.screenContainer}
-    >
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={SharedStyles.contentContainer}
-      >
-        <Text style={SharedStyles.sectionTitle}>New Journal Entry</Text>
-        
+    <View style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
+        <Text 
+          variant="headlineMedium" 
+          style={[styles.headerTitle, { color: colors.text }]}
+        >
+          New Entry
+        </Text>
+      </View>
+
+      <ScrollView style={styles.form}>
+        <TextInput
+          label="Title"
+          value={title}
+          onChangeText={setTitle}
+          style={[styles.input, { backgroundColor: colors.input }]}
+          textColor={colors.text}
+        />
+
         <Card style={[SharedStyles.card, styles.formCard]}>
           <Card.Content>
             <View style={styles.formSection}>
@@ -212,8 +226,8 @@ export default function JournalEntryScreen() {
                     prompts: {}
                   })}
                   style={styles.picker}
-                  dropdownIconColor={Colors.dark.text}
-                  itemStyle={{ color: Colors.dark.text }}
+                  dropdownIconColor={colors.text}
+                  itemStyle={{ color: colors.text }}
                 >
                   <Picker.Item label="Select entry type" value="" />
                   {Object.entries(entryTypeConfigs).map(([type, config]) => (
@@ -221,7 +235,7 @@ export default function JournalEntryScreen() {
                       key={type}
                       label={config.label}
                       value={type}
-                      color={Colors.dark.text}
+                      color={colors.text}
                     />
                   ))}
                 </Picker>
@@ -315,9 +329,9 @@ export default function JournalEntryScreen() {
                           step={0.1}
                           value={formData.metrics[metric.id] || 5}
                           onValueChange={(value: number) => handleMetricChange(metric.id, value)}
-                          minimumTrackTintColor={Colors.dark.primary}
-                          maximumTrackTintColor={Colors.dark.border}
-                          thumbTintColor={Colors.dark.primary}
+                          minimumTrackTintColor={colors.primary}
+                          maximumTrackTintColor={colors.border}
+                          thumbTintColor={colors.primary}
                           style={styles.slider}
                         />
                         <Text style={styles.sliderMinMax}>{metric.max}</Text>
@@ -363,7 +377,7 @@ export default function JournalEntryScreen() {
           </Card.Content>
         </Card>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 
@@ -529,5 +543,16 @@ const styles = StyleSheet.create({
   },
   drawButton: {
     backgroundColor: Colors.dark.secondary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  headerTitle: {
+    flex: 1,
+  },
+  form: {
+    padding: 16,
   },
 }) 

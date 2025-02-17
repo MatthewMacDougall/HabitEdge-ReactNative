@@ -9,24 +9,25 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 import { Colors } from '@/constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeProvider as CustomThemeProvider } from '@/contexts/ThemeContext';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 // Customize Paper theme to match our dark theme
-const customDarkTheme = {
+const customTheme = (scheme: 'light' | 'dark') => ({
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: Colors.dark.primary,
-    background: Colors.dark.background,
-    surface: Colors.dark.card,
-    error: Colors.dark.error,
-    text: Colors.dark.text,
-    secondaryContainer: Colors.dark.input,
+    primary: Colors[scheme].primary,
+    background: Colors[scheme].background,
+    surface: Colors[scheme].card,
+    error: Colors[scheme].error,
+    text: Colors[scheme].text,
+    secondaryContainer: Colors[scheme].input,
   },
-};
+});
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -36,6 +37,7 @@ export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
+  const { theme } = useTheme();
 
   useEffect(() => {
     if (!navigationState?.key || !fontsLoaded) return;
@@ -62,16 +64,18 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider theme={customDarkTheme}>
+    <CustomThemeProvider>
       <ThemeProvider value={DarkTheme}>
-        <SafeAreaProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="onboarding" />
-            <Stack.Screen name="(tabs)" />
-          </Stack>
-          <StatusBar style="light" />
-        </SafeAreaProvider>
+        <PaperProvider theme={customTheme(theme)}>
+          <SafeAreaProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+            <StatusBar style="light" />
+          </SafeAreaProvider>
+        </PaperProvider>
       </ThemeProvider>
-    </PaperProvider>
+    </CustomThemeProvider>
   );
 }
