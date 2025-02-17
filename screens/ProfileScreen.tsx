@@ -42,8 +42,17 @@ export default function ProfileScreen() {
       const targetsJson = await AsyncStorage.getItem('targets');
       const targets = targetsJson ? JSON.parse(targetsJson) : [];
       
-      const activeTargets = targets.filter((t: any) => !t.completed);
-      const completedTargets = targets.filter((t: any) => t.completed);
+      // Calculate target completion status
+      const isTargetCompleted = (target: any): boolean => {
+        if (target.type === 'boolean') {
+          return target.completed;
+        }
+        const totalProgress = target.progress.reduce((sum: number, p: any) => sum + p.value, 0);
+        return totalProgress >= (target.target || 0);
+      };
+
+      const ongoingTargets = targets.filter((t: any) => !isTargetCompleted(t));
+      const completedTargets = targets.filter((t: any) => isTargetCompleted(t));
 
       // Calculate average performance rating from last 5 entries
       const recentEntries = journalEntries
@@ -55,7 +64,7 @@ export default function ProfileScreen() {
 
       setStats({
         journalCount: journalEntries.length,
-        activeTargets: activeTargets.length,
+        activeTargets: ongoingTargets.length,
         completedTargets: completedTargets.length,
         recentPerformance: Math.round(recentPerformance * 10) / 10
       });

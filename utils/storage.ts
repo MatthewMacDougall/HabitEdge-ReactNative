@@ -29,7 +29,12 @@ export const saveTargets = async (targets: Target[]): Promise<void> => {
 export const loadTargets = async (): Promise<Target[]> => {
   try {
     const targetsJson = await AsyncStorage.getItem(TARGETS_STORAGE_KEY)
-    return targetsJson ? JSON.parse(targetsJson) : []
+    const targets = targetsJson ? JSON.parse(targetsJson) : []
+    // Ensure all targets have completedAt field
+    return targets.map(target => ({
+      ...target,
+      completedAt: target.completedAt || undefined
+    }))
   } catch (error) {
     console.error('Error loading targets:', error)
     throw error

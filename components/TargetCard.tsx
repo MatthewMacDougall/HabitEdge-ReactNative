@@ -77,13 +77,15 @@ const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgres
               />
             }
           >
-            <Menu.Item 
-              onPress={() => {
-                setMenuVisible(false);
-                onEdit(target);
-              }} 
-              title="Edit Target" 
-            />
+            {!target.completed && (
+              <Menu.Item 
+                onPress={() => {
+                  setMenuVisible(false);
+                  onEdit(target);
+                }} 
+                title="Edit Target" 
+              />
+            )}
             <Menu.Item 
               onPress={() => {
                 setMenuVisible(false);
@@ -91,20 +93,32 @@ const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgres
               }} 
               title="View Progress Log" 
             />
-            <Menu.Item 
-              onPress={() => {
-                setMenuVisible(false);
-                onTogglePriority(target);
-              }} 
-              title={target.isPriority ? "Remove Priority" : "Mark as Priority"}
-              leadingIcon={target.isPriority ? "star-off" : "star"}
-            />
+            {!target.completed && (
+              <Menu.Item 
+                onPress={() => {
+                  setMenuVisible(false);
+                  onTogglePriority(target);
+                }} 
+                title={target.isPriority ? "Remove Priority" : "Mark as Priority"}
+                leadingIcon={target.isPriority ? "star-off" : "star"}
+              />
+            )}
           </Menu>
         </View>
 
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+            <View style={[
+              styles.progressFill, 
+              { 
+                width: `${progress}%`,
+                backgroundColor: target.completed 
+                  ? colors.success 
+                  : target.isPriority 
+                    ? colors.primary 
+                    : colors.progressFill 
+              }
+            ]} />
           </View>
           <Text style={[styles.progressText, { color: colors.text }]}>
             {target.type === 'numeric' 
@@ -114,7 +128,7 @@ const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgres
           </Text>
         </View>
 
-        {target.plan && (
+        {target.plan && !target.completed && (
           <View style={[styles.planContainer, { backgroundColor: colors.input }]}>
             <Text style={[styles.planLabel, { color: colors.textSecondary }]}>Course of Action:</Text>
             <Text style={[styles.planText, { color: colors.text }]} numberOfLines={3}>{target.plan}</Text>
@@ -122,18 +136,29 @@ const TargetCard: React.FC<TargetCardProps> = ({ target, onEdit, onUpdateProgres
         )}
 
         <View style={styles.footer}>
-          <Text style={[styles.deadline, { color: colors.textSecondary }]}>
-            {daysRemaining > 0 
-              ? `${daysRemaining} days remaining`
-              : 'Deadline passed'
-            }
-          </Text>
-          <Button 
-            mode="contained"
-            onPress={() => onUpdateProgress(target)}
-          >
-            Update Progress
-          </Button>
+          {target.completed ? (
+            <Text style={[styles.completedDate, { color: colors.success }]}>
+              {target.completedAt 
+                ? `Completed on ${format(new Date(target.completedAt), 'MMM d, yyyy')}`
+                : 'Completed'
+              }
+            </Text>
+          ) : (
+            <>
+              <Text style={[styles.deadline, { color: colors.textSecondary }]}>
+                {daysRemaining > 0 
+                  ? `${daysRemaining} days remaining`
+                  : 'Deadline passed'
+                }
+              </Text>
+              <Button 
+                mode="contained"
+                onPress={() => onUpdateProgress(target)}
+              >
+                Update Progress
+              </Button>
+            </>
+          )}
         </View>
       </Card.Content>
     </Card>
@@ -194,6 +219,12 @@ const styles = StyleSheet.create({
   },
   deadline: {
     fontSize: 14,
+    flex: 1,
+  },
+  completedDate: {
+    fontSize: 14,
+    color: Colors.dark.success,
+    flex: 1,
   },
 });
 

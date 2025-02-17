@@ -24,6 +24,7 @@ export interface Target {
   plan?: string;
   /** Whether this target is marked as priority */
   isPriority?: boolean;
+  completedAt?: string; // ISO string of when the target was completed
 }
 
 /**

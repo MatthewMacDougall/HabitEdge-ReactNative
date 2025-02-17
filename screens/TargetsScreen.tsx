@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Platform
+  Platform,
+  Alert
 } from 'react-native'
 import {
   Text,
@@ -83,6 +84,8 @@ interface TargetState {
   showDeleteConfirm: boolean;
   /** Controls visibility of progress log modal */
   showProgressLog: boolean;
+  /** Progress entry being edited */
+  editingProgress: TargetProgress | null;
 }
 
 export default function TargetsScreen() {
@@ -108,6 +111,7 @@ export default function TargetsScreen() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showProgressLog, setShowProgressLog] = useState(false)
+  const [editingProgress, setEditingProgress] = useState<TargetProgress | null>(null)
   const [menuVisible, setMenuVisible] = useState(false)
   const colorScheme = useColorScheme()
   const colors = Colors[colorScheme]
@@ -223,60 +227,95 @@ export default function TargetsScreen() {
    * @throws Error if saving fails, but error is caught and displayed to user
    */
   const handleUpdateProgress = async () => {
-    if (!selectedTarget) return
+    if (!selectedTarget) return;
 
-    if (selectedTarget.type === 'numeric') {
-      const newProgress = Number(progressUpdate)
-      if (isNaN(newProgress) || newProgress < 0) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Please enter a valid number'
-        })
-        return
-      }
+    try {
+      const now = new Date().toISOString();
+      console.log('Updating progress:', {
+        targetId: selectedTarget.id,
+        isBoolean: selectedTarget.type === 'boolean',
+        now
+      });
 
-      try {
-        const progressEntry: TargetProgress = {
-          id: Date.now(),
-          value: newProgress,
-          timestamp: new Date().toISOString(),
-          note: progressNote.trim() || undefined
-        }
+      if (selectedTarget.type === 'boolean') {
+        const updatedTargets = targets.map(target => {
+          if (target.id === selectedTarget.id) {
+            const updatedTarget = {
+              ...target,
+              completed: true,
+              completedAt: now,
+              progress: [{
+                id: Date.now(),
+                value: 1,
+                note: progressNote,
+                timestamp: progressDate
+              }]
+            };
+            console.log('Updated boolean target:', updatedTarget);
+            return updatedTarget;
+          }
+          return target;
+        });
+
+        await saveTargets(updatedTargets);
+        setTargets(updatedTargets);
+      } else {
+        const progress = {
+          id: editingProgress?.id || Date.now(),
+          value: parseFloat(progressUpdate),
+          note: progressNote,
+          timestamp: progressDate
+        };
 
         const updatedTargets = targets.map(target => {
           if (target.id === selectedTarget.id) {
-            const newTotal = calculateTotal([...target.progress, progressEntry])
+            const updatedProgress = isEditMode 
+              ? target.progress.map(p => p.id === editingProgress?.id ? progress : p)
+              : [...target.progress, progress];
+            
+            const newTotal = updatedProgress.reduce((sum, p) => sum + p.value, 0);
+            const isNowCompleted = newTotal >= (target.target || 0);
+            const wasCompletedBefore = target.completed;
+
             return {
               ...target,
-              progress: [...target.progress, progressEntry],
-              completed: target.target ? newTotal >= target.target : false
-            }
+              progress: updatedProgress,
+              completed: isNowCompleted,
+              completedAt: isNowCompleted && !wasCompletedBefore 
+                ? now 
+                : target.completedAt
+            };
           }
-          return target
-        })
-        
-        await saveTargets(updatedTargets)
-        setTargets(updatedTargets)
-        setShowProgressModal(false)
-        setProgressUpdate('')
-        setProgressNote('')
-        setSelectedTarget(null)
-        
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Progress logged!'
-        })
-      } catch (error) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Failed to log progress'
-        })
+          return target;
+        });
+
+        await saveTargets(updatedTargets);
+        setTargets(updatedTargets);
       }
+      
+      // Reset form
+      setProgressUpdate('');
+      setProgressNote('');
+      setProgressDate(new Date().toISOString());
+      setShowProgressModal(false);
+      setIsEditMode(false);
+      setEditingProgress(null);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: selectedTarget.type === 'boolean' 
+          ? 'Target marked as complete!'
+          : (isEditMode ? 'Progress updated successfully!' : 'Progress logged successfully!')
+      });
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update progress'
+      });
     }
-  }
+  };
 
   /**
    * Resets the new target form to default values
@@ -531,6 +570,64 @@ export default function TargetsScreen() {
     }
   };
 
+  // Add handler for deleting progress
+  const handleDeleteProgress = async (progressId: number) => {
+    if (!selectedTarget) return;
+
+    try {
+      const updatedTargets = targets.map(target => {
+        if (target.id === selectedTarget.id) {
+          return {
+            ...target,
+            progress: target.progress.filter(p => p.id !== progressId)
+          };
+        }
+        return target;
+      });
+
+      await saveTargets(updatedTargets);
+      setTargets(updatedTargets);
+      setShowProgressModal(false);
+      setIsEditMode(false);
+      setEditingProgress(null);
+
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: 'Progress entry deleted successfully!'
+      });
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to delete progress'
+      });
+    }
+  };
+
+  // Add helper function to check if a target is completed
+  const isTargetCompleted = (target: Target): boolean => {
+    if (target.type === 'boolean') {
+      return target.completed;
+    }
+
+    // For numeric targets, check if total progress meets or exceeds target value
+    const totalProgress = target.progress.reduce((sum, p) => sum + p.value, 0);
+    return totalProgress >= (target.target || 0);
+  };
+
+  // Update the targets list with filtered results
+  const getFilteredTargets = () => {
+    switch (filterType) {
+      case 'ongoing':
+        return targets.filter(target => !isTargetCompleted(target));
+      case 'completed':
+        return targets.filter(target => isTargetCompleted(target));
+      default:
+        return targets;
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -578,19 +675,35 @@ export default function TargetsScreen() {
           />
         }
       >
-        {filteredTargets.length === 0 ? (
-          <Surface style={styles.emptyState}>
+        {getFilteredTargets().length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: colors.card }]}>
             <MaterialCommunityIcons 
               name="target" 
               size={48} 
-              color={colors.textSecondary} 
+              color={colors.primary} 
             />
-            <Text style={styles.emptyStateText}>
-              No targets found. Tap the "Add Target" button to create one!
+            <Text style={[styles.emptyStateText, { color: colors.text }]}>
+              {filterType === 'all' 
+                ? "You haven't set any targets yet."
+                : filterType === 'ongoing'
+                  ? "No targets in progress."
+                  : "No completed targets yet."}
             </Text>
-          </Surface>
+            {filterType === 'all' && (
+              <Button
+                mode="contained"
+                onPress={() => {
+                  setIsEditMode(false);
+                  setShowModal(true);
+                }}
+                style={{ marginTop: 16 }}
+              >
+                Add Your First Target
+              </Button>
+            )}
+          </View>
         ) : (
-          filteredTargets.map(target => (
+          getFilteredTargets().map(target => (
             <TargetCard
               key={target.id}
               target={target}
@@ -720,14 +833,6 @@ export default function TargetsScreen() {
                 <View style={styles.editButtons}>
                   <Button
                     mode="outlined"
-                    onPress={() => setShowDeleteConfirm(true)}
-                    style={[styles.modalButton, styles.deleteButton, { borderColor: colors.error }]}
-                    textColor={colors.error}
-                  >
-                    Delete
-                  </Button>
-                  <Button
-                    mode="outlined"
                     onPress={() => {
                       setShowModal(false);
                       setIsEditMode(false);
@@ -774,28 +879,31 @@ export default function TargetsScreen() {
           visible={showProgressModal}
           onDismiss={() => {
             setShowProgressModal(false);
-            setSelectedTarget(null);
+            setIsEditMode(false);
+            setEditingProgress(null);
             setProgressUpdate('');
             setProgressNote('');
+            setProgressDate(new Date().toISOString());
           }}
           contentContainerStyle={[
-            styles.modal, 
-            styles.progressModal, 
-            { marginTop: 60, backgroundColor: colors.card }
+            styles.modal,
+            styles.progressModal,
+            { backgroundColor: colors.card }
           ]}
         >
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
-              {selectedTarget?.type === 'boolean' ? 'Update Status' : 'Log Progress'}
+              {selectedTarget?.type === 'boolean' ? 'Update Completion' : (isEditMode ? 'Edit Progress' : 'Update Progress')}
             </Text>
             <IconButton
               icon="close"
-              size={24}
               onPress={() => {
                 setShowProgressModal(false);
-                setSelectedTarget(null);
+                setIsEditMode(false);
+                setEditingProgress(null);
                 setProgressUpdate('');
                 setProgressNote('');
+                setProgressDate(new Date().toISOString());
               }}
             />
           </View>
@@ -805,24 +913,57 @@ export default function TargetsScreen() {
               {selectedTarget?.title}
             </Text>
 
-            <TextInput
-              label="Progress"
-              value={progressUpdate}
-              onChangeText={setProgressUpdate}
-              keyboardType="numeric"
-              style={[styles.input, { backgroundColor: colors.input }]}
-              textColor={colors.text}
-            />
-            
-            <TextInput
-              label="Note (Optional)"
-              value={progressNote}
-              onChangeText={setProgressNote}
-              style={[styles.input, { backgroundColor: colors.input }]}
-              textColor={colors.text}
-              multiline
+            {selectedTarget?.type === 'boolean' ? (
+              // Boolean target content
+              <TextInput
+                label="Note (Optional)"
+                value={progressNote}
+                onChangeText={setProgressNote}
+                style={[styles.input, { backgroundColor: colors.input }]}
+                textColor={colors.text}
+                multiline
+              />
+            ) : (
+              // Numeric target content
+              <>
+                <TextInput
+                  label="Progress"
+                  value={progressUpdate}
+                  onChangeText={setProgressUpdate}
+                  keyboardType="numeric"
+                  style={[styles.input, { backgroundColor: colors.input }]}
+                  textColor={colors.text}
+                />
+                
+                <TextInput
+                  label="Note (Optional)"
+                  value={progressNote}
+                  onChangeText={setProgressNote}
+                  style={[styles.input, { backgroundColor: colors.input }]}
+                  textColor={colors.text}
+                  multiline
+                />
+              </>
+            )}
+
+            <DateTimePicker
+              value={new Date(progressDate)}
+              onChange={(event, date) => {
+                if (date) setProgressDate(date.toISOString());
+              }}
             />
           </ScrollView>
+
+          <View style={styles.submitButtonContainer}>
+            <Button 
+              mode="contained"
+              onPress={handleUpdateProgress}
+              style={styles.submitButton}
+              disabled={selectedTarget?.type === 'numeric' && !progressUpdate}
+            >
+              {selectedTarget?.type === 'boolean' ? 'Mark as Complete' : (isEditMode ? 'Update' : 'Log Progress')}
+            </Button>
+          </View>
         </Modal>
 
         <Modal
@@ -875,10 +1016,16 @@ export default function TargetsScreen() {
           ]}
         >
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Progress Log</Text>
+            <View>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Progress Log</Text>
+              {selectedTarget?.completed && selectedTarget.completedAt && (
+                <Text style={[styles.completionStatus, { color: colors.success }]}>
+                  Completed on {format(new Date(selectedTarget.completedAt), 'MMM d, yyyy')}
+                </Text>
+              )}
+            </View>
             <IconButton
               icon="close"
-              size={24}
               onPress={() => {
                 setShowProgressLog(false);
                 setSelectedTarget(null);
@@ -892,20 +1039,65 @@ export default function TargetsScreen() {
                 No progress entries yet.
               </Text>
             ) : (
-              selectedTarget?.progress.map((entry, index) => (
-                <View key={index} style={[styles.logEntry, { backgroundColor: colors.input }]}>
-                  <Text style={[styles.logDate, { color: colors.textSecondary }]}>
-                    {format(new Date(entry.timestamp), 'MMM d, yyyy')}
-                  </Text>
-                  <Text style={[styles.logValue, { color: colors.text }]}>
-                    {entry.value} {selectedTarget.unit}
-                  </Text>
-                  {entry.note && (
-                    <Text style={[styles.logNote, { color: colors.textSecondary }]}>
-                      {entry.note}
-                    </Text>
-                  )}
-                </View>
+              selectedTarget?.progress.map((progress) => (
+                <TouchableOpacity
+                  key={progress.id}
+                  style={styles.logEntry}
+                  onPress={() => {
+                    setProgressUpdate(progress.value.toString());
+                    setProgressNote(progress.note || '');
+                    setProgressDate(progress.timestamp);
+                    setIsEditMode(true);
+                    setShowProgressLog(false); // Close log first
+                    setShowProgressModal(true);
+                    setEditingProgress(progress);
+                  }}
+                >
+                  <View style={styles.logHeader}>
+                    <View>
+                      <Text style={[styles.logDate, { color: colors.textSecondary }]}>
+                        {format(new Date(progress.timestamp), 'MMM d, yyyy')}
+                      </Text>
+                      <Text style={[styles.logValue, { color: colors.text }]}>
+                        {progress.value} {selectedTarget.unit}
+                      </Text>
+                      {progress.note && (
+                        <Text style={[styles.logNote, { color: colors.textSecondary }]}>
+                          {progress.note}
+                        </Text>
+                      )}
+                    </View>
+                    <Menu
+                      visible={progress.id === editingProgress?.id}
+                      onDismiss={() => setEditingProgress(null)}
+                      anchor={
+                        <IconButton
+                          icon="dots-vertical"
+                          size={20}
+                          onPress={() => setEditingProgress(progress)}
+                        />
+                      }
+                    >
+                      <Menu.Item
+                        onPress={() => {
+                          setProgressUpdate(progress.value.toString());
+                          setProgressNote(progress.note || '');
+                          setProgressDate(progress.timestamp);
+                          setIsEditMode(true);
+                          setShowProgressLog(false);
+                          setShowProgressModal(true);
+                          setEditingProgress(progress);
+                        }}
+                        title="Edit"
+                      />
+                      <Menu.Item
+                        onPress={() => handleDeleteProgress(progress.id)}
+                        title="Delete"
+                        titleStyle={{ color: colors.error }}
+                      />
+                    </Menu>
+                  </View>
+                </TouchableOpacity>
               ))
             )}
           </ScrollView>
@@ -982,13 +1174,23 @@ const styles = StyleSheet.create({
   },
   modal: {
     margin: 20,
-    padding: 20,
     borderRadius: 12,
-    maxHeight: '80%',
+    width: '90%',
+    maxWidth: 350,
+    alignSelf: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
   },
   modalTitle: {
-    marginBottom: 16,
     fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 0,
   },
   modalSubtitle: {
     fontSize: 16,
@@ -1000,6 +1202,7 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 16,
+    backgroundColor: Colors.dark.input,
   },
   typeButtons: {
     marginBottom: 12,
@@ -1018,7 +1221,8 @@ const styles = StyleSheet.create({
   },
   editButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
+    gap: 12,
     width: '100%',
   },
   modalButton: {
@@ -1087,22 +1291,34 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   progressModal: {
-    position: 'relative',
-    maxWidth: 500,
-    alignSelf: 'center',
-    maxHeight: '70%',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [
+      { translateX: -175 },
+      { translateY: -180 }
+    ],
+    width: 350,
+    maxHeight: 360,
     padding: 0,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    zIndex: 999,
+    marginHorizontal: 'auto',
+    alignSelf: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 24,
+      },
+    }),
   },
   modalScroll: {
-    padding: 20,
-    paddingTop: 0,
+    padding: 16,
+    paddingTop: 8,
   },
   singleButtonContainer: {
     padding: 20,
@@ -1118,7 +1334,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   deleteButton: {
-    minWidth: 100,
+    marginBottom: 12,
   },
   confirmModal: {
     maxWidth: 400,
@@ -1143,10 +1359,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   logEntry: {
-    padding: 12,
+    padding: 16,
     backgroundColor: Colors.dark.input,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 12,
+  },
+  logHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   logDate: {
     color: Colors.dark.textSecondary,
@@ -1165,6 +1386,7 @@ const styles = StyleSheet.create({
   },
   progressLogModal: {
     maxWidth: 500,
+    height: '80%',
     alignSelf: 'center',
     padding: 0,
   },
@@ -1173,5 +1395,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     marginTop: 20,
+  },
+  submitButtonContainer: {
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.dark.border,
+    backgroundColor: Colors.dark.card,
+  },
+  submitButton: {
+    marginVertical: 8,
+    backgroundColor: Colors.dark.primary,
+  },
+  completionStatus: {
+    fontSize: 12,
+    marginTop: 4,
   },
 }) 

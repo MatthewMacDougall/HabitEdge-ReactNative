@@ -22,6 +22,7 @@ export const Colors = {
     input: '#FFFFFF',
     icon: '#000000',
     progressFill: '#4CAF50',
+    success: '#4CAF50',
   },
   dark: {
     text: '#FFFFFF',
@@ -38,5 +39,6 @@ export const Colors = {
     input: '#2A2A2A',
     icon: '#FFFFFF',
     progressFill: '#4CAF50',
+    success: '#4CAF50',
   },
 };
