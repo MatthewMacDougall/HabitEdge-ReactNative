@@ -1,16 +1,79 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, List, Avatar, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/Colors';
 import { SharedStyles } from '@/constants/Styles';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { UserRegistration } from '@/types/onboarding';
+import { getSportById } from '@/config/sports';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme as keyof typeof Colors];
+  const { theme } = useTheme();
+  const colors = Colors[theme];
+  const [userData, setUserData] = useState<UserRegistration | null>(null);
+  const [stats, setStats] = useState({
+    journalCount: 0,
+    activeTargets: 0,
+    completedTargets: 0,
+    recentPerformance: 0
+  });
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      const userJson = await AsyncStorage.getItem('userRegistration');
+      if (userJson) {
+        setUserData(JSON.parse(userJson));
+      }
+    };
+    loadUserData();
+  }, []);
+
+  // Load stats
+  useEffect(() => {
+    const loadStats = async () => {
+      const journalJson = await AsyncStorage.getItem('journal_entries');
+      const journalEntries = journalJson ? JSON.parse(journalJson) : [];
+      
+      const targetsJson = await AsyncStorage.getItem('targets');
+      const targets = targetsJson ? JSON.parse(targetsJson) : [];
+      
+      const activeTargets = targets.filter((t: any) => !t.completed);
+      const completedTargets = targets.filter((t: any) => t.completed);
+
+      // Calculate average performance rating from last 5 entries
+      const recentEntries = journalEntries
+        .slice(0, 5)
+        .map((entry: any) => entry.metrics?.overallRating || 0);
+      const recentPerformance = recentEntries.length 
+        ? recentEntries.reduce((a: number, b: number) => a + b, 0) / recentEntries.length
+        : 0;
+
+      setStats({
+        journalCount: journalEntries.length,
+        activeTargets: activeTargets.length,
+        completedTargets: completedTargets.length,
+        recentPerformance: Math.round(recentPerformance * 10) / 10
+      });
+    };
+    loadStats();
+  }, []);
+
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const sport = userData?.sport ? getSportById(userData.sport) : null;
 
   return (
     <ScrollView 
@@ -21,35 +84,52 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <Avatar.Text 
           size={80} 
-          label="JD"
+          label={userData ? getInitials(userData.name) : '??'}
           style={{ backgroundColor: colors.primary }}
         />
         <Text 
           variant="headlineMedium" 
           style={[styles.name, { color: colors.text }]}
         >
-          John Doe
+          {userData?.name || 'Loading...'}
         </Text>
         <Text 
           variant="bodyLarge" 
           style={[styles.sport, { color: colors.textSecondary }]}
         >
-          Basketball
+          {sport?.name || 'Sport not set'}
         </Text>
       </View>
 
       {/* Quick Stats */}
       <View style={styles.statsGrid}>
-        <Surface style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.statValue, { color: colors.text }]}>24</Text>
+        <Surface 
+          style={[styles.statCard, { backgroundColor: colors.card }]}
+          onTouchEnd={() => router.push('/(tabs)/journal')}
+        >
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {stats.journalCount}
+          </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             Journal Entries
           </Text>
+          <Text style={[styles.statSubtext, { color: colors.textSecondary }]}>
+            Avg. Rating: {stats.recentPerformance}
+          </Text>
         </Surface>
-        <Surface style={[styles.statCard, { backgroundColor: colors.card }]}>
-          <Text style={[styles.statValue, { color: colors.text }]}>8</Text>
+
+        <Surface 
+          style={[styles.statCard, { backgroundColor: colors.card }]}
+          onTouchEnd={() => router.push('/(tabs)/targets')}
+        >
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {stats.activeTargets}
+          </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             Active Targets
+          </Text>
+          <Text style={[styles.statSubtext, { color: colors.textSecondary }]}>
+            {stats.completedTargets} completed
           </Text>
         </Surface>
       </View>
@@ -110,6 +190,11 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 14,
+    textAlign: 'center',
+  },
+  statSubtext: {
+    fontSize: 12,
+    marginTop: 4,
     textAlign: 'center',
   },
 }); 
