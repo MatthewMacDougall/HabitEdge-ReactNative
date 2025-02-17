@@ -20,6 +20,10 @@ export interface Target {
   completed: boolean;
   /** ISO string of when the target was created */
   createdAt: string;
+  /** Optional plan/course of action to achieve the target */
+  plan?: string;
+  /** Whether this target is marked as priority */
+  isPriority?: boolean;
 }
 
 /**

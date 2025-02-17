@@ -11,7 +11,8 @@ import {
   Card,
   Button,
   IconButton,
-  Surface
+  Surface,
+  ProgressBar
 } from 'react-native-paper'
 import { useRouter } from 'expo-router'
 import { LineChart } from 'react-native-chart-kit'
@@ -19,6 +20,8 @@ import { Colors } from '@/constants/Colors'
 import { getStreakStats } from '@/utils/streakCalculator'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SharedStyles } from '@/constants/Styles'
+import { loadTargets } from '@/utils/storage'
+import { Target } from '@/types/targets'
 
 // Mock data - replace with actual API calls
 const mockJournalEntries = [
@@ -32,10 +35,27 @@ const mockJournalEntries = [
   // ... other entries
 ]
 
+const getDaysRemaining = (deadline: string): number => {
+  const today = new Date();
+  const deadlineDate = new Date(deadline);
+  const diffTime = deadlineDate.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+const calculateProgress = (target: Target): number => {
+  if (target.type === 'boolean') {
+    return target.completed ? 100 : 0;
+  }
+  if (!target.target || !target.progress) return 0;
+  const total = target.progress.reduce((sum, p) => sum + p.value, 0);
+  return Math.min(100, (total / target.target) * 100);
+};
+
 export default function DashboardScreen() {
   const router = useRouter()
   const [streak, setStreak] = useState(0)
   const [recentEntries, setRecentEntries] = useState(mockJournalEntries)
+  const [priorityTarget, setPriorityTarget] = useState<Target | null>(null)
 
   useEffect(() => {
     // Calculate streak stats when entries change
@@ -48,6 +68,28 @@ export default function DashboardScreen() {
     // stats.hasJournaledToday
     // stats.lastEntry
   }, [recentEntries])
+
+  const loadPriorityTarget = async () => {
+    const targets = await loadTargets();
+    const incompletedTargets = targets.filter(t => !t.completed);
+    
+    // First check for manually marked priority
+    let priority = incompletedTargets.find(t => t.isPriority);
+    
+    // If no priority marked, get closest deadline
+    if (!priority) {
+      priority = incompletedTargets.sort((a, b) => 
+        new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+      )[0];
+    }
+    
+    setPriorityTarget(priority || null);
+  };
+
+  // Add useEffect to reload priority when targets change
+  useEffect(() => {
+    loadPriorityTarget();
+  }, []);
 
   const chartData = {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
@@ -91,6 +133,38 @@ export default function DashboardScreen() {
           <Text style={styles.statUnit}>entries</Text>
         </Surface>
       </View>
+
+      {priorityTarget && (
+        <Card 
+          style={[SharedStyles.card, styles.priorityCard]}
+          onPress={() => router.push('/(tabs)/targets')}
+        >
+          <Card.Content>
+            <View style={styles.priorityHeader}>
+              <View>
+                <Text style={styles.priorityLabel}>Priority Target</Text>
+                <Text style={styles.priorityTitle}>{priorityTarget.title}</Text>
+              </View>
+              <MaterialCommunityIcons 
+                name="star" 
+                size={24} 
+                color={Colors.dark.primary} 
+              />
+            </View>
+
+            <View style={styles.progressContainer}>
+              <ProgressBar 
+                progress={calculateProgress(priorityTarget) / 100} 
+                color={Colors.dark.primary}
+                style={styles.progressBar}
+              />
+              <Text style={styles.deadline}>
+                {getDaysRemaining(priorityTarget.deadline)} days remaining
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+      )}
 
       <Card 
         style={[SharedStyles.card, styles.chartCard]}
@@ -269,5 +343,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  priorityCard: {
+    marginBottom: 24,
+  },
+  priorityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  priorityLabel: {
+    color: Colors.dark.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  priorityTitle: {
+    color: Colors.dark.text,
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  deadline: {
+    color: Colors.dark.textSecondary,
+    fontSize: 14,
   },
 }) 

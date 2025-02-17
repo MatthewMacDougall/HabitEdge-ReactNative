@@ -21,6 +21,7 @@ export const Colors = {
     secondary: '#FF8C00',
     input: '#FFFFFF',
     icon: '#000000',
+    progressFill: '#4CAF50',
   },
   dark: {
     text: '#FFFFFF',
@@ -36,5 +37,6 @@ export const Colors = {
     secondary: '#FFA500',
     input: '#2A2A2A',
     icon: '#FFFFFF',
+    progressFill: '#4CAF50',
   },
 };

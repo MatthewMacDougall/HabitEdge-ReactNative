@@ -2,6 +2,10 @@ import { Sport } from '@/types/sports';
 
 export const sports: Sport[] = [
   {
+    id: 'baseball',
+    name: 'Baseball'
+  },
+  {
     id: 'basketball',
     name: 'Basketball'
   },
@@ -10,8 +14,16 @@ export const sports: Sport[] = [
     name: 'Football'
   },
   {
-    id: 'baseball',
-    name: 'Baseball'
+    id: 'golf',
+    name: 'Golf'
+  },
+  {
+    id: 'hockey',
+    name: 'Hockey'
+  },
+  {
+    id: 'lacrosse',
+    name: 'Lacrosse'
   },
   {
     id: 'soccer',
@@ -22,16 +34,8 @@ export const sports: Sport[] = [
     name: 'Tennis'
   },
   {
-    id: 'golf',
-    name: 'Golf'
-  },
-  {
     id: 'volleyball',
     name: 'Volleyball'
-  },
-  {
-    id: 'hockey',
-    name: 'Hockey'
   },
   {
     id: 'other',
@@ -43,8 +47,3 @@ export const sports: Sport[] = [
 export const getSportById = (id: string): Sport | undefined => {
   return sports.find(sport => sport.id === id);
 };
-
-export const getMetricsForSport = (sportId: string): string[] => {
-  const sport = getSportById(sportId);
-  return sport?.metrics || [];
-}; 

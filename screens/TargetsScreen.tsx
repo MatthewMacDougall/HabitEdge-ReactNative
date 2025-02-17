@@ -19,7 +19,8 @@ import {
   IconButton,
   Divider,
   Surface,
-  ProgressBar
+  ProgressBar,
+  Menu
 } from 'react-native-paper'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { format } from 'date-fns'
@@ -30,6 +31,7 @@ import { saveTargets, loadTargets } from '../utils/storage'
 import { useFocusEffect } from '@react-navigation/native'
 import { SharedStyles } from '@/constants/Styles'
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons'
+import { default as TargetCard } from '@/components/TargetCard'
 
 /**
  * TargetsScreen Component
@@ -78,6 +80,8 @@ interface TargetState {
   isEditMode: boolean;
   /** Controls visibility of delete confirmation */
   showDeleteConfirm: boolean;
+  /** Controls visibility of progress log modal */
+  showProgressLog: boolean;
 }
 
 export default function TargetsScreen() {
@@ -102,6 +106,8 @@ export default function TargetsScreen() {
   const [showProgressDatePicker, setShowProgressDatePicker] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showProgressLog, setShowProgressLog] = useState(false)
+  const [menuVisible, setMenuVisible] = useState(false)
 
   useFocusEffect(
     useCallback(() => {
@@ -486,6 +492,42 @@ export default function TargetsScreen() {
     }
   };
 
+  /**
+   * Handles viewing progress for a target
+   * Sets up progress log modal and populates it with target progress
+   * 
+   * @param target Target to view progress for
+   */
+  const handleViewProgress = (target: Target) => {
+    setSelectedTarget(target);
+    setShowProgressLog(true);
+  };
+
+  const handleTogglePriority = async (target: Target) => {
+    try {
+      // First remove priority from any other target
+      const updatedTargets = targets.map(t => ({
+        ...t,
+        isPriority: t.id === target.id ? !t.isPriority : false
+      }));
+      
+      await saveTargets(updatedTargets);
+      setTargets(updatedTargets);
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: target.isPriority ? 'Priority removed' : 'Target marked as priority'
+      });
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update priority'
+      });
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -544,81 +586,17 @@ export default function TargetsScreen() {
           </Surface>
         ) : (
           filteredTargets.map(target => (
-            <Card key={target.id} style={styles.targetCard}>
-              <Card.Content>
-                <View style={styles.targetHeader}>
-                  <View>
-                    <Text style={styles.targetTitle}>{target.title}</Text>
-                    <Text style={styles.targetSubtitle}>
-                      {getDaysRemaining(target.deadline)} days remaining
-                    </Text>
-                  </View>
-                  <IconButton
-                    icon="dots-vertical"
-                    onPress={() => handleEditTarget(target)}
-                  />
-                </View>
-                
-                <View style={styles.progressContainer}>
-                  <ProgressBar
-                    progress={calculateProgress(target) / 100}
-                    color={Colors.dark.primary}
-                    style={styles.progressBar}
-                  />
-                  <Text style={styles.progressText}>
-                    {target.type === 'boolean' 
-                      ? (target.completed ? 'Completed' : 'In Progress')
-                      : `${calculateTotal(target.progress)}${target.unit ? ` ${target.unit}` : ''} 
-                         ${target.target ? ` / ${target.target}${target.unit ? ` ${target.unit}` : ''}` : ''}`
-                    }
-                  </Text>
-                </View>
-
-                {target.type === 'boolean' ? (
-                  !target.completed && (
-                    <Button
-                      mode="contained-tonal"
-                      onPress={async () => {
-                        try {
-                          const updatedTargets = targets.map(g => 
-                            g.id === target.id ? { ...g, completed: true } : g
-                          );
-                          await saveTargets(updatedTargets);
-                          setTargets(updatedTargets);
-                          
-                          Toast.show({
-                            type: 'success',
-                            text1: 'Success',
-                            text2: 'Target marked as complete!'
-                          });
-                        } catch (error) {
-                          Toast.show({
-                            type: 'error',
-                            text1: 'Error',
-                            text2: 'Failed to update target'
-                          });
-                        }
-                      }}
-                      style={styles.updateProgressButton}
-                    >
-                      Mark as Complete
-                    </Button>
-                  )
-                ) : (
-                  <Button
-                    mode="contained-tonal"
-                    onPress={() => {
-                      setSelectedTarget(target);
-                      setShowProgressModal(true);
-                      setProgressUpdate('');
-                    }}
-                    style={styles.updateProgressButton}
-                  >
-                    Update Progress
-                  </Button>
-                )}
-              </Card.Content>
-            </Card>
+            <TargetCard
+              key={target.id}
+              target={target}
+              onEdit={() => handleEditTarget(target)}
+              onUpdateProgress={() => {
+                setSelectedTarget(target);
+                setShowProgressModal(true);
+              }}
+              onViewProgress={() => handleViewProgress(target)}
+              onTogglePriority={handleTogglePriority}
+            />
           ))
         )}
       </ScrollView>
@@ -627,142 +605,154 @@ export default function TargetsScreen() {
         <Modal
           visible={showModal}
           onDismiss={() => {
-            setShowModal(false);
-            setIsEditMode(false);
-            resetNewTarget();
+            setShowModal(false)
+            setIsEditMode(false)
+            resetNewTarget()
           }}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={[styles.modal, { marginTop: 40 }]}
         >
-          <Text variant="titleLarge" style={styles.modalTitle}>
-            {isEditMode ? 'Edit Target' : 'New Target'}
-          </Text>
-          <TextInput
-            label="Target Title"
-            value={newTarget.title || ''}
-            onChangeText={(value) => setNewTarget({ ...newTarget, title: value })}
-            style={styles.input}
-          />
-
-          <SegmentedButtons
-            value={newTarget.type || 'numeric'}
-            onValueChange={(value) => 
-              setNewTarget({ ...newTarget, type: value as 'numeric' | 'boolean' })
-            }
-            buttons={[
-              { value: 'numeric', label: 'Numeric' },
-              { value: 'boolean', label: 'Completion' }
-            ]}
-            style={styles.typeButtons}
-          />
-
-          {newTarget.type === 'numeric' && (
-            <View style={styles.row}>
-              <TextInput
-                label="Target"
-                keyboardType="numeric"
-                value={String(newTarget.target || '')}
-                onChangeText={(value) => 
-                  setNewTarget({ ...newTarget, target: Number(value) })
-                }
-                style={[styles.input, styles.flex1]}
-              />
-              <TextInput
-                label="Unit"
-                value={newTarget.unit || ''}
-                onChangeText={(value) => setNewTarget({ ...newTarget, unit: value })}
-                placeholder="targets, points, etc."
-                style={[styles.input, styles.flex1]}
-              />
-            </View>
-          )}
-
-          <TouchableOpacity 
-            onPress={() => setShowDatePicker(true)}
-          >
+          <ScrollView>
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              {isEditMode ? 'Edit Target' : 'Add Target'}
+            </Text>
             <TextInput
-              label="Deadline"
-              value={format(new Date(newTarget.deadline!), 'MMM d, yyyy')}
-              editable={false}
-              right={<TextInput.Icon 
-                icon="calendar" 
-                onPress={() => setShowDatePicker(true)}
-              />}
+              label="Target Title"
+              value={newTarget.title || ''}
+              onChangeText={(value) => setNewTarget({ ...newTarget, title: value })}
               style={styles.input}
             />
-          </TouchableOpacity>
 
-          {showDatePicker && (
-            <DateTimePicker
-              value={new Date(newTarget.deadline!)}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              onChange={(event, date) => {
-                setShowDatePicker(false);
-                if (date && event.type !== 'dismissed') {
-                  const selectedDate = new Date(date);
-                  selectedDate.setHours(23, 59, 59, 999);
-                  setNewTarget(prev => ({ 
-                    ...prev, 
-                    deadline: selectedDate.toISOString() 
-                  }));
-                }
-              }}
-              minimumDate={new Date()}
+            <SegmentedButtons
+              value={newTarget.type || 'numeric'}
+              onValueChange={(value) => 
+                setNewTarget({ ...newTarget, type: value as 'numeric' | 'boolean' })
+              }
+              buttons={[
+                { value: 'numeric', label: 'Numeric' },
+                { value: 'boolean', label: 'Completion' }
+              ]}
+              style={styles.typeButtons}
             />
-          )}
 
-          <View style={styles.modalButtons}>
-            {isEditMode ? (
-              <View style={styles.editButtons}>
-                <Button
-                  mode="outlined"
-                  onPress={() => setShowDeleteConfirm(true)}
-                  style={[styles.modalButton, styles.deleteButton]}
-                  textColor={Colors.dark.error}
-                >
-                  Delete
-                </Button>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setShowModal(false);
-                    setIsEditMode(false);
-                    resetNewTarget();
-                  }}
-                  style={styles.modalButton}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={handleUpdateTarget}
-                  style={styles.modalButton}
-                >
-                  Update
-                </Button>
-              </View>
-            ) : (
-              <View style={styles.centerButtons}>
-                <Button
-                  mode="outlined"
-                  onPress={() => {
-                    setShowModal(false);
-                    resetNewTarget();
-                  }}
-                  style={styles.modalButton}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  mode="contained"
-                  onPress={handleAddTarget}
-                  style={styles.modalButton}
-                >
-                  Add Target
-                </Button>
+            {newTarget.type === 'numeric' && (
+              <View style={styles.row}>
+                <TextInput
+                  label="Target"
+                  keyboardType="numeric"
+                  value={String(newTarget.target || '')}
+                  onChangeText={(value) => 
+                    setNewTarget({ ...newTarget, target: Number(value) })
+                  }
+                  style={[styles.input, styles.flex1]}
+                />
+                <TextInput
+                  label="Unit"
+                  value={newTarget.unit || ''}
+                  onChangeText={(value) => setNewTarget({ ...newTarget, unit: value })}
+                  placeholder="goals, points, etc."
+                  style={[styles.input, styles.flex1]}
+                />
               </View>
             )}
-          </View>
+
+            <TouchableOpacity 
+              onPress={() => setShowDatePicker(true)}
+            >
+              <TextInput
+                label="Deadline"
+                value={format(new Date(newTarget.deadline!), 'MMM d, yyyy')}
+                editable={false}
+                right={<TextInput.Icon 
+                  icon="calendar" 
+                  onPress={() => setShowDatePicker(true)}
+                />}
+                style={styles.input}
+              />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={new Date(newTarget.deadline!)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date && event.type !== 'dismissed') {
+                    const selectedDate = new Date(date);
+                    selectedDate.setHours(23, 59, 59, 999);
+                    setNewTarget(prev => ({ 
+                      ...prev, 
+                      deadline: selectedDate.toISOString() 
+                    }));
+                  }
+                }}
+                minimumDate={new Date()}
+              />
+            )}
+
+            <TextInput
+              label="Course of Action (Optional)"
+              placeholder="What's your plan to achieve this target?"
+              value={newTarget.plan || ''}
+              onChangeText={(value) => setNewTarget(prev => ({ ...prev, plan: value }))}
+              multiline
+              numberOfLines={4}
+              style={[styles.input, styles.textArea]}
+            />
+
+            <View style={styles.modalButtons}>
+              {isEditMode ? (
+                <View style={styles.editButtons}>
+                  <Button
+                    mode="outlined"
+                    onPress={() => setShowDeleteConfirm(true)}
+                    style={[styles.modalButton, styles.deleteButton]}
+                    textColor={Colors.dark.error}
+                  >
+                    Delete
+                  </Button>
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      setShowModal(false);
+                      setIsEditMode(false);
+                      resetNewTarget();
+                    }}
+                    style={styles.modalButton}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={handleUpdateTarget}
+                    style={styles.modalButton}
+                  >
+                    Update
+                  </Button>
+                </View>
+              ) : (
+                <View style={styles.centerButtons}>
+                  <Button
+                    mode="outlined"
+                    onPress={() => {
+                      setShowModal(false);
+                      resetNewTarget();
+                    }}
+                    style={styles.modalButton}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    mode="contained"
+                    onPress={handleAddTarget}
+                    style={styles.modalButton}
+                  >
+                    Add Target
+                  </Button>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         </Modal>
 
         <Modal
@@ -773,7 +763,7 @@ export default function TargetsScreen() {
             setProgressUpdate('');
             setProgressNote('');
           }}
-          contentContainerStyle={[styles.modal, styles.progressModal]}
+          contentContainerStyle={[styles.modal, styles.progressModal, { marginTop: 60 }]}
         >
           <View style={styles.modalHeader}>
             <Text variant="titleLarge" style={styles.modalTitle}>
@@ -880,6 +870,49 @@ export default function TargetsScreen() {
             </Button>
           </View>
         </Modal>
+
+        <Modal
+          visible={showProgressLog}
+          onDismiss={() => {
+            setShowProgressLog(false);
+            setSelectedTarget(null);
+          }}
+          contentContainerStyle={[styles.modal, styles.progressLogModal]}
+        >
+          <View style={styles.modalHeader}>
+            <Text variant="titleLarge" style={styles.modalTitle}>Progress Log</Text>
+            <IconButton
+              icon="close"
+              size={24}
+              onPress={() => {
+                setShowProgressLog(false);
+                setSelectedTarget(null);
+              }}
+            />
+          </View>
+
+          <ScrollView style={styles.modalScroll}>
+            {selectedTarget?.progress.length === 0 ? (
+              <Text style={styles.emptyLogText}>No progress entries yet.</Text>
+            ) : (
+              selectedTarget?.progress
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .map((entry, index) => (
+                  <View key={index} style={styles.logEntry}>
+                    <Text style={styles.logDate}>
+                      {format(new Date(entry.timestamp), 'MMM d, yyyy')}
+                    </Text>
+                    <Text style={styles.logValue}>
+                      {entry.value} {selectedTarget.unit}
+                    </Text>
+                    {entry.note && (
+                      <Text style={styles.logNote}>{entry.note}</Text>
+                    )}
+                  </View>
+                ))
+            )}
+          </ScrollView>
+        </Modal>
       </Portal>
     </View>
   )
@@ -973,17 +1006,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 12,
     backgroundColor: Colors.dark.card,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
+    maxHeight: '80%',
   },
   modalTitle: {
     color: Colors.dark.text,
@@ -1093,11 +1116,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   progressModal: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: Platform.OS === 'ios' ? 80 : 40,
-    maxHeight: '80%',
+    position: 'relative',
+    maxWidth: 500,
+    alignSelf: 'center',
+    maxHeight: '70%',
     padding: 0,
   },
   modalHeader: {
@@ -1146,5 +1168,42 @@ const styles = StyleSheet.create({
   },
   confirmDeleteButton: {
     backgroundColor: Colors.dark.error,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  logEntry: {
+    padding: 12,
+    backgroundColor: Colors.dark.input,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  logDate: {
+    color: Colors.dark.textSecondary,
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  logValue: {
+    color: Colors.dark.text,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  logNote: {
+    color: Colors.dark.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  progressLogModal: {
+    maxWidth: 500,
+    alignSelf: 'center',
+    padding: 0,
+  },
+  emptyLogText: {
+    color: Colors.dark.textSecondary,
+    textAlign: 'center',
+    fontSize: 16,
+    marginTop: 20,
   },
 }) 
