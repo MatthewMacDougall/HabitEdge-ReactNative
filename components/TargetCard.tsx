@@ -11,6 +11,7 @@
  *   onUpdateProgress={() => handleProgress(targetData)}
  * />
  */
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text, IconButton, Menu, Button } from 'react-native-paper';
 import { Target } from '@/types/targets';

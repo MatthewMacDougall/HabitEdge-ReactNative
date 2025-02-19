@@ -26,8 +26,10 @@
     "expo": "~52.0.35",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.6",
+    "expo-document-picker": "~13.0.3",
     "expo-font": "~13.0.3",
     "expo-haptics": "~14.0.1",
+    "expo-image-picker": "~16.0.6",
     "expo-linking": "~7.0.5",
     "expo-router": "~4.0.17",
     "expo-splash-screen": "~0.29.22",
@@ -35,6 +37,7 @@
     "expo-symbols": "~0.2.2",
     "expo-system-ui": "~4.0.8",
     "expo-web-browser": "~14.0.2",
+    "firebase": "^11.3.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
@@ -50,9 +53,7 @@
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "recyclerlistview": "^4.2.1",
-    "ts-object-utils": "^0.0.5",
-    "expo-document-picker": "~13.0.3",
-    "expo-image-picker": "~16.0.6"
+    "ts-object-utils": "^0.0.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

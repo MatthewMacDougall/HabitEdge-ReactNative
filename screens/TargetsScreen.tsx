@@ -756,8 +756,8 @@ export default function TargetsScreen() {
                 setNewTarget({ ...newTarget, type: value as 'numeric' | 'boolean' })
               }
               buttons={[
-                { value: 'numeric', label: 'Numeric' },
-                { value: 'boolean', label: 'Completion' }
+                { value: 'numeric', label: 'Progress Target' },
+                { value: 'boolean', label: 'Milestone' }
               ]}
               style={styles.typeButtons}
             />

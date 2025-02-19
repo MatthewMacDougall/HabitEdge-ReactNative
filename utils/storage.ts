@@ -31,7 +31,7 @@ export const loadTargets = async (): Promise<Target[]> => {
     const targetsJson = await AsyncStorage.getItem(TARGETS_STORAGE_KEY)
     const targets = targetsJson ? JSON.parse(targetsJson) : []
     // Ensure all targets have completedAt field
-    return targets.map(target => ({
+    return targets.map((target: Target) => ({
       ...target,
       completedAt: target.completedAt || undefined
     }))
