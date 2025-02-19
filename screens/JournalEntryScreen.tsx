@@ -21,53 +21,52 @@ import {
 } from 'react-native-paper'
 import { Picker } from '@react-native-picker/picker'
 import Slider from '@react-native-community/slider'
-import { EntryType, entryTypeConfigs, GameDetails } from '@/src/config/entryTypes'
+import { EntryType, entryTypeConfigs, GameDetails, Prompt } from '@/src/config/entryTypes'
 import { Colors } from '@/constants/Colors'
 import Toast from 'react-native-toast-message'
 import { SharedStyles } from '@/constants/Styles'
 import { useTheme } from '@/contexts/ThemeContext'
 import * as DocumentPicker from 'expo-document-picker'
 import * as ImagePicker from 'expo-image-picker'
+import { useRouter } from 'expo-router'
+import { format } from 'date-fns'
+import { EntryFormData, GameScore, GameEntryFormData } from '@/types/journal'
+import { addJournalEntry } from '@/utils/journalStorage'
+import { useColorScheme } from '@/hooks/useColorScheme'
 
-interface GameScore {
-  yourTeam: string;
-  opponent: string;
-}
+type Result = 'win' | 'loss' | 'draw'
 
-interface MediaItem {
-  type: 'upload' | 'link';
-  url: string;
-  name?: string;
-  title?: string;
-}
-
-interface FormData {
-  type: EntryType | '';
-  metrics: Record<string, number>;
-  prompts: Record<string, string>;
-  gameDetails?: GameDetails & {
-    score?: GameScore;
-  };
-  media: Record<string, Array<MediaItem>>;
+const initialFormState: EntryFormData = {
+  type: '',
+  metrics: {},
+  prompts: {},
+  media: {},
+  gameDetails: {
+    opponent: '',
+    score: { yourTeam: '0', opponent: '0' },
+    result: 'draw'
+  }
 }
 
 export default function JournalEntryScreen() {
-  const [title, setTitle] = useState('');
-  const [formData, setFormData] = useState<FormData>({
-    type: '',
-    metrics: {},
-    prompts: {},
-    media: {}
-  })
+  const router = useRouter()
+  const colorScheme = useColorScheme()
+  const colors = Colors[colorScheme]
+  
+  const [title, setTitle] = useState('')
+  const [formData, setFormData] = useState<EntryFormData>(initialFormState)
 
-  const { theme } = useTheme();
-  const colors = Colors[theme];
+  const { theme } = useTheme()
+  const colorsTheme = Colors[theme]
 
-  const [linkDialogVisible, setLinkDialogVisible] = useState(false);
-  const [activeMediaId, setActiveMediaId] = useState<string>('');
-  const [linkInput, setLinkInput] = useState('');
-  const [linkTitle, setLinkTitle] = useState('');
-  const [linkError, setLinkError] = useState('');
+  const [linkDialogVisible, setLinkDialogVisible] = useState(false)
+  const [activeMediaId, setActiveMediaId] = useState<string>('')
+  const [linkInput, setLinkInput] = useState('')
+  const [linkTitle, setLinkTitle] = useState('')
+  const [linkError, setLinkError] = useState('')
+  const isGameEntry = (data: EntryFormData): data is GameEntryFormData => {
+    return data.type === 'game';
+  }
 
   const handleMetricChange = (metricId: string, value: number) => {
     setFormData(prev => ({
@@ -82,133 +81,122 @@ export default function JournalEntryScreen() {
   const handlePromptChange = (promptId: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      prompts: { ...prev.prompts, [promptId]: value }
+      prompts: {
+        ...prev.prompts,
+        [promptId]: value
+      }
     }))
   }
-
   const handleGameDetailsChange = (field: keyof GameDetails, value: string) => {
+    if (!isGameEntry(formData)) return;
+
     setFormData(prev => ({
       ...prev,
       gameDetails: {
-        ...prev.gameDetails,
+        ...prev.gameDetails!,
         [field]: value
       }
     }))
   }
 
-  const determineResult = (yourScore: string, opponentScore: string): 'win' | 'loss' | 'draw' | undefined => {
-    const yourNum = parseInt(yourScore);
-    const oppNum = parseInt(opponentScore);
-    
-    if (isNaN(yourNum) || isNaN(oppNum)) return undefined;
-    
-    if (yourNum > oppNum) return 'win';
-    if (yourNum < oppNum) return 'loss';
-    return 'draw';
-  };
-  const handleScoreChange = (team: 'yourTeam' | 'opponent', value: string) => {
-    setFormData((prev: FormData) => {
-      const currentScore: GameScore = prev.gameDetails?.score ?? { yourTeam: '', opponent: '' };
-      const newScore: GameScore = {
-        ...currentScore,
+  const handleScoreChange = (team: keyof GameScore, value: string) => {
+    if (!isGameEntry(formData)) return;
+
+    setFormData(prev => {
+      const currentScore = {
+        ...(prev.gameDetails?.score || { yourTeam: '0', opponent: '0' }),
         [team]: value
       };
+
+      const yourScore = parseInt(currentScore.yourTeam) || 0;
+      const theirScore = parseInt(currentScore.opponent) || 0;
       
-      // Automatically determine the result based on scores
-      const result = determineResult(newScore.yourTeam, newScore.opponent);
-      
+      let result: GameDetails['result'] = 'draw';
+      if (yourScore > theirScore) result = 'win';
+      else if (yourScore < theirScore) result = 'loss';
+
       return {
         ...prev,
         gameDetails: {
-          ...prev.gameDetails,
-          score: newScore,
+          ...prev.gameDetails!,
+          score: currentScore,
           result
         }
       };
     });
-  };
+  }
 
   const handleSubmit = async () => {
-    if (!formData.type) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please select an entry type'
-      })
-      return
-    }
-
-    const config = entryTypeConfigs[formData.type]
-    
-    // Validate required metrics
-    const missingMetrics = config.metrics.filter(
-      m => formData.metrics[m.id] === undefined
-    )
-    if (missingMetrics.length > 0) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: `Please rate all metrics`
-      })
-      return
-    }
-
-    // Validate required prompts
-    const requiredPrompts = config.prompts.filter(p => p.required)
-    const missingPrompts = requiredPrompts.filter(p => !formData.prompts[p.id])
-    if (missingPrompts.length > 0) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: `Please fill in: ${missingPrompts.map(p => p.label).join(', ')}`
-      })
-      return
-    }
-
-    if (formData.type === 'game') {
-      if (!formData.gameDetails?.opponent) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Please enter the opponent name'
-        })
-        return
-      }
-      if (!formData.gameDetails?.result) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Please select the game result'
-        })
-        return
-      }
-    }
-
     try {
-      // Here you would send the data to your backend
-      console.log('Submitting entry:', {
+      if (!formData.type) {
+        Toast.show({
+          type: 'error',
+          text1: 'Please select an entry type'
+        })
+        return
+      }
+
+      const config = entryTypeConfigs[formData.type as EntryType]
+      
+      // Validate required metrics
+      const missingMetrics = config.metrics.filter(
+        (m: { id: string }) => formData.metrics[m.id] === undefined
+      )
+      if (missingMetrics.length > 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Please rate all metrics'
+        })
+        return
+      }
+      // Validate required prompts
+      const requiredPrompts = config.prompts.filter((p: Prompt) => p.required === true)
+      const missingPrompts = requiredPrompts.filter((p: Prompt) => !formData.prompts[p.id])
+      if (missingPrompts.length > 0) {
+        Toast.show({
+          type: 'error',
+          text1: `Please fill in: ${missingPrompts.map(p => p.label).join(', ')}`
+        })
+        return
+      }
+
+      // Game-specific validation
+      if (isGameEntry(formData)) {
+        if (!formData.gameDetails?.opponent) {
+          Toast.show({
+            type: 'error',
+            text1: 'Please enter the opponent name'
+          })
+          return
+        }
+        if (!formData.gameDetails?.score) {
+          Toast.show({
+            type: 'error',
+            text1: 'Please enter the game score'
+          })
+          return
+        }
+      }
+
+      const entry = {
         ...formData,
-        timestamp: new Date().toISOString()
-      })
+        type: formData.type as EntryType,
+        date: new Date().toISOString(),
+        title: formData.prompts.title || config.label
+      }
+
+      await addJournalEntry(entry)
       
       Toast.show({
         type: 'success',
-        text1: 'Success',
-        text2: 'Journal entry saved successfully!'
+        text1: 'Entry saved successfully!'
       })
       
-      // Reset form
-      setFormData({
-        type: '',
-        metrics: {},
-        prompts: {},
-        media: {}
-      })
+      router.back()
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to save journal entry'
+        text1: 'Failed to save entry'
       })
       console.error(error)
     }
@@ -220,15 +208,15 @@ export default function JournalEntryScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: true,
         quality: 1,
-      });
+      })
 
-      if (result.canceled) return;
+      if (result.canceled) return
 
       const newMedia = result.assets.map(asset => ({
         type: 'upload' as const,
         url: asset.uri,
         name: asset.uri.split('/').pop() || 'media'
-      }));
+      }))
 
       setFormData(prev => ({
         ...prev,
@@ -236,15 +224,14 @@ export default function JournalEntryScreen() {
           ...prev.media,
           [mediaId]: [...(prev.media[mediaId] || []), ...newMedia]
         }
-      }));
+      }))
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to upload photos'
-      });
+        text1: 'Failed to upload photos'
+      })
     }
-  };
+  }
 
   const handleFileUpload = async (mediaId: string) => {
     try {
@@ -252,15 +239,15 @@ export default function JournalEntryScreen() {
         type: ['image/*', 'video/*', 'application/pdf'],
         multiple: true,
         copyToCacheDirectory: true
-      });
+      })
 
-      if (result.canceled) return;
+      if (result.canceled) return
 
       const newMedia = result.assets.map(asset => ({
         type: 'upload' as const,
         url: asset.uri,
         name: asset.name
-      }));
+      }))
 
       setFormData(prev => ({
         ...prev,
@@ -268,15 +255,14 @@ export default function JournalEntryScreen() {
           ...prev.media,
           [mediaId]: [...(prev.media[mediaId] || []), ...newMedia]
         }
-      }));
+      }))
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Error',
-        text2: 'Failed to upload files'
-      });
+        text1: 'Failed to upload files'
+      })
     }
-  };
+  }
 
   const handleMediaUpload = async (mediaId: string) => {
     if (Platform.OS === 'ios') {
@@ -287,12 +273,12 @@ export default function JournalEntryScreen() {
         },
         async (buttonIndex) => {
           if (buttonIndex === 1) {
-            await handlePhotoUpload(mediaId);
+            await handlePhotoUpload(mediaId)
           } else if (buttonIndex === 2) {
-            await handleFileUpload(mediaId);
+            await handleFileUpload(mediaId)
           }
         }
-      );
+      )
     } else {
       // For Android, show a simple alert dialog
       Alert.alert(
@@ -303,33 +289,33 @@ export default function JournalEntryScreen() {
           { text: 'Photos', onPress: () => handlePhotoUpload(mediaId) },
           { text: 'Files', onPress: () => handleFileUpload(mediaId) },
         ]
-      );
+      )
     }
-  };
+  }
 
   const handleAddLink = (mediaId: string) => {
-    setActiveMediaId(mediaId);
-    setLinkInput('');
-    setLinkTitle('');
-    setLinkError('');
-    setLinkDialogVisible(true);
-  };
+    setActiveMediaId(mediaId)
+    setLinkInput('')
+    setLinkTitle('')
+    setLinkError('')
+    setLinkDialogVisible(true)
+  }
 
   const validateUrl = (url: string) => {
     try {
-      new URL(url);
-      return true;
+      new URL(url)
+      return true
     } catch {
-      return false;
+      return false
     }
-  };
+  }
 
   const handleLinkSubmit = () => {
-    if (!linkInput) return;
+    if (!linkInput) return
     
     if (!validateUrl(linkInput)) {
-      setLinkError('Please enter a valid URL');
-      return;
+      setLinkError('Please enter a valid URL')
+      return
     }
 
     setFormData(prev => ({
@@ -342,15 +328,15 @@ export default function JournalEntryScreen() {
           title: linkTitle || linkInput,
         }]
       }
-    }));
+    }))
 
-    setLinkDialogVisible(false);
-    setLinkInput('');
-    setLinkTitle('');
-    setLinkError('');
-  };
+    setLinkDialogVisible(false)
+    setLinkInput('')
+    setLinkTitle('')
+    setLinkError('')
+  }
 
-  const selectedConfig = formData.type ? entryTypeConfigs[formData.type] : null
+  const selectedConfig = formData.type ? entryTypeConfigs[formData.type as EntryType] : null
 
   return (
     <View style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}>
@@ -383,7 +369,12 @@ export default function JournalEntryScreen() {
                     type: value as EntryType,
                     metrics: {},
                     prompts: {},
-                    media: {}
+                    media: {},
+                    gameDetails: {
+                      opponent: '',
+                      score: { yourTeam: '0', opponent: '0' },
+                      result: 'draw'
+                    }
                   })}
                   style={[styles.picker, { color: Colors.dark.text }]}
                   dropdownIconColor={Colors.dark.text}
@@ -445,7 +436,7 @@ export default function JournalEntryScreen() {
                   <SegmentedButtons
                     value={formData.gameDetails?.result || ''}
                     onValueChange={(value: string) => 
-                      handleGameDetailsChange('result', value as 'win' | 'loss' | 'draw')
+                      handleGameDetailsChange('result', value as Result)
                     }
                     buttons={[
                       { 
@@ -560,7 +551,7 @@ export default function JournalEntryScreen() {
                           </Button>
                         )}
                       </View>
-                      {formData.media[mediaConfig.id]?.map((media, index) => (
+                      {formData.media[mediaConfig.id]?.map((media: { type: string; name?: string; title?: string; url?: string }, index: number) => (
                         <View key={index} style={styles.mediaItem}>
                           <Text style={[styles.mediaName, { color: colors.text }]}>
                             {media.type === 'upload' ? media.name : (media.title || media.url)}
@@ -573,9 +564,9 @@ export default function JournalEntryScreen() {
                                 ...prev,
                                 media: {
                                   ...prev.media,
-                                  [mediaConfig.id]: prev.media[mediaConfig.id].filter((_, i) => i !== index)
+                                  [mediaConfig.id]: prev.media[mediaConfig.id].filter((item: any, i: number) => i !== index)
                                 }
-                              }));
+                              }))
                             }}
                           />
                         </View>
@@ -601,10 +592,10 @@ export default function JournalEntryScreen() {
         <Dialog 
           visible={linkDialogVisible} 
           onDismiss={() => {
-            setLinkDialogVisible(false);
-            setLinkInput('');
-            setLinkTitle('');
-            setLinkError('');
+            setLinkDialogVisible(false)
+            setLinkInput('')
+            setLinkTitle('')
+            setLinkError('')
           }}
           style={[styles.linkDialog, { backgroundColor: colors.card }]}
         >
@@ -614,8 +605,8 @@ export default function JournalEntryScreen() {
               label="URL"
               value={linkInput}
               onChangeText={(text) => {
-                setLinkInput(text);
-                setLinkError('');
+                setLinkInput(text)
+                setLinkError('')
               }}
               style={[styles.input, { backgroundColor: colors.input }]}
               textColor={colors.text}
@@ -641,10 +632,10 @@ export default function JournalEntryScreen() {
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => {
-              setLinkDialogVisible(false);
-              setLinkInput('');
-              setLinkTitle('');
-              setLinkError('');
+              setLinkDialogVisible(false)
+              setLinkInput('')
+              setLinkTitle('')
+              setLinkError('')
             }}>
               Cancel
             </Button>

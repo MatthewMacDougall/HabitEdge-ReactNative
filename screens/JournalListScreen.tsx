@@ -15,6 +15,10 @@ import {
   Searchbar,
   Divider,
   Surface,
+  SegmentedButtons,
+  FAB,
+  Portal,
+  Dialog,
 } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
@@ -23,37 +27,41 @@ import { SharedStyles } from '@/constants/Styles';
 import { EntryType, entryTypeConfigs } from '@/src/config/entryTypes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/hooks/useColorScheme';
-
-interface JournalEntry {
-  id: string;
-  type: EntryType;
-  timestamp: string;
-  metrics: Record<string, number>;
-  prompts: Record<string, string>;
-  gameDetails?: {
-    opponent?: string;
-    result?: 'win' | 'loss' | 'draw';
-    score?: {
-      yourTeam: string;
-      opponent: string;
-    };
-  };
-}
+import JournalEntry from '@/components/JournalEntry';
+import { deleteJournalEntry, loadJournalEntries } from '@/utils/journalStorage';
+import Toast from 'react-native-toast-message';
+import JournalEntryComponent from '@/components/JournalEntry';
+import { JournalEntry as JournalEntryType } from '@/types/journal';
 
 interface UserData {
   name: string;
   // ... other user fields
 }
 
+interface FilterOption {
+  value: EntryType | 'all';
+  label: string;
+}
+
+const filterOptions: FilterOption[] = [
+  { value: 'all', label: 'All' },
+  { value: EntryType.Game, label: 'Games' },
+  { value: EntryType.Practice, label: 'Practice' },
+  { value: EntryType.Workout, label: 'Workouts' },
+  { value: EntryType.Film, label: 'Film' }
+];
+
 export default function JournalListScreen() {
   const router = useRouter();
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [entries, setEntries] = useState<JournalEntryType[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [userData, setUserData] = useState<UserData | null>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
+  const [filter, setFilter] = useState<EntryType | 'all'>('all');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const loadEntries = async () => {
     try {
@@ -61,8 +69,8 @@ export default function JournalListScreen() {
       if (storedEntries) {
         const parsedEntries = JSON.parse(storedEntries);
         // Sort entries by date, newest first
-        const sortedEntries = parsedEntries.sort((a: JournalEntry, b: JournalEntry) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        const sortedEntries = parsedEntries.sort((a: JournalEntryType, b: JournalEntryType) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
         );
         setEntries(sortedEntries);
       }
@@ -70,6 +78,7 @@ export default function JournalListScreen() {
       console.error('Error loading entries:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -101,18 +110,42 @@ export default function JournalListScreen() {
   };
 
   const filteredEntries = entries.filter(entry => {
+    if (filter === 'all') return true;
+    return entry.type === filter;
+  }).filter(entry => {
+    if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
     return (
       entry.type.toLowerCase().includes(searchLower) ||
       entry.prompts.highlights?.toLowerCase().includes(searchLower) ||
       entry.gameDetails?.opponent?.toLowerCase().includes(searchLower)
     );
-  });
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   useEffect(() => {
     loadUserData();
     loadEntries();
   }, []);
+
+  const handleDeleteEntry = async () => {
+    if (!deleteId) return;
+
+    try {
+      await deleteJournalEntry(deleteId);
+      await loadEntries();
+      Toast.show({
+        type: 'success',
+        text1: 'Entry deleted successfully'
+      });
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to delete entry'
+      });
+    } finally {
+      setDeleteId(null);
+    }
+  };
 
   const renderEmptyState = () => (
     <Surface style={styles.emptyState}>
@@ -170,6 +203,13 @@ export default function JournalListScreen() {
         inputStyle={{ color: Colors.dark.text }}
       />
 
+      <SegmentedButtons
+        value={filter}
+        onValueChange={value => setFilter(value as EntryType | 'all')}
+        buttons={filterOptions}
+        style={styles.filterButtons}
+      />
+
       <ScrollView
         style={styles.content}
         contentContainerStyle={[
@@ -186,22 +226,39 @@ export default function JournalListScreen() {
       >
         {filteredEntries.length > 0 ? (
           filteredEntries.map((entry) => (
-            <Surface 
-              key={entry.id} 
-              style={[styles.entryCard, { backgroundColor: colors.card }]}
-            >
-              <Text style={[styles.entryTitle, { color: colors.text }]}>
-                {entry.prompts.highlights || entryTypeConfigs[entry.type].label}
-              </Text>
-              <Text style={[styles.entryDate, { color: colors.textSecondary }]}>
-                {format(new Date(entry.timestamp), 'MMM d, yyyy')}
-              </Text>
-            </Surface>
+            <JournalEntryComponent
+              key={entry.id}
+              entry={entry}
+              onEdit={() => router.push({
+                pathname: '/(tabs)/entries',
+                params: { id: entry.id }
+              })}
+              onDelete={() => setDeleteId(Number(entry.id))}
+            />
           ))
         ) : (
           renderEmptyState()
         )}
       </ScrollView>
+
+      <Portal>
+        <Dialog visible={!!deleteId} onDismiss={() => setDeleteId(null)}>
+          <Dialog.Title>Delete Entry</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to delete this entry?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setDeleteId(null)}>Cancel</Button>
+            <Button onPress={handleDeleteEntry}>Delete</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <FAB
+        icon="plus"
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={() => router.push('/entries/new')}
+      />
     </View>
   );
 }
@@ -224,6 +281,9 @@ const styles = StyleSheet.create({
   searchBar: {
     margin: 16,
     backgroundColor: Colors.dark.input,
+  },
+  filterButtons: {
+    marginBottom: 8,
   },
   content: {
     flex: 1,
@@ -261,5 +321,11 @@ const styles = StyleSheet.create({
   },
   entryDate: {
     fontSize: 12,
+  },
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 0,
   },
 });

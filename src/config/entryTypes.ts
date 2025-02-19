@@ -1,4 +1,9 @@
-export type EntryType = 'game' | 'practice' | 'workout' | 'film';
+export enum EntryType {
+  Game = 'game',
+  Practice = 'practice',
+  Workout = 'workout',
+  Film = 'film'
+}
 
 export interface GameDetails {
   opponent?: string;
@@ -9,35 +14,39 @@ export interface GameDetails {
 export interface Metric {
   id: string;
   label: string;
-  description: string;
-  min: number;
-  max: number;
+  description?: string;
+  min?: number;
+  max?: number;
+  defaultValue?: number;
 }
 
 export interface Prompt {
   id: string;
   label: string;
-  placeholder: string;
+  placeholder?: string;
   required?: boolean;
+  multiline?: boolean;
+  minLength?: number;
 }
 
-export interface Media {
+export interface MediaConfig {
   id: string;
   label: string;
-  description: string;
-  acceptedFormats: string[];
-  maxSizeMB: number;
-  required: boolean;
-  multiple?: boolean;
-  allowLinks?: boolean;
+  description?: string;
+  required?: boolean;
   allowUpload?: boolean;
+  allowLinks?: boolean;
+  maxFiles?: number;
+  acceptedTypes?: string[];
 }
 
-interface EntryTypeConfig {
+export interface EntryTypeConfig {
+  type: EntryType;
   label: string;
+  description?: string;
   metrics: Metric[];
   prompts: Prompt[];
-  media: Media[];
+  media: MediaConfig[];
 }
 
 // Common metrics shared across all entry types
@@ -72,22 +81,22 @@ const commonMetrics: Metric[] = [
   }
 ];
 
-const media: Media[] = [
+const media: MediaConfig[] = [
   {
     id: 'mediaUpload',
     label: 'Upload Media (optional)',
     description: 'Attach any relevant media files (videos, photos, etc.)',
-    acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
-    maxSizeMB: 50,
+    acceptedTypes: ['image/*', 'video/*', 'application/pdf'],
+    maxFiles: 50,
     required: false,
-    multiple: true,
-    allowLinks: true,
-    allowUpload: true
+    allowUpload: true,
+    allowLinks: true
   }
 ];
 
 export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
-  game: {
+  [EntryType.Game]: {
+    type: EntryType.Game,
     label: 'Game',
     metrics: [
       ...commonMetrics,
@@ -135,16 +144,16 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         id: 'gameMedia',
         label: 'Game Media',
         description: 'Upload game footage, photos, or stats',
-        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
-        maxSizeMB: 50,
+        acceptedTypes: ['image/*', 'video/*', 'application/pdf'],
+        maxFiles: 50,
         required: false,
-        multiple: true,
-        allowLinks: true,
-        allowUpload: true
+        allowUpload: true,
+        allowLinks: true
       }
     ]
   },
-  practice: {
+  [EntryType.Practice]: {
+    type: EntryType.Practice,
     label: 'Practice',
     metrics: [
       ...commonMetrics,
@@ -186,16 +195,16 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         id: 'practiceMedia',
         label: 'Practice Media',
         description: 'Upload practice footage, photos, or stats',
-        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
-        maxSizeMB: 50,
+        acceptedTypes: ['image/*', 'video/*', 'application/pdf'],
+        maxFiles: 50,
         required: false,
-        multiple: true,
-        allowLinks: true,
-        allowUpload: true
+        allowUpload: true,
+        allowLinks: true
       }
     ]
   },
-  workout: {
+  [EntryType.Workout]: {
+    type: EntryType.Workout,
     label: 'Workout',
     metrics: [
       {
@@ -271,16 +280,16 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         id: 'workoutMedia',
         label: 'Workout Media',
         description: 'Upload workout footage, photos, or stats',
-        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
-        maxSizeMB: 50,
+        acceptedTypes: ['image/*', 'video/*', 'application/pdf'],
+        maxFiles: 50,
         required: false,
-        multiple: true,
-        allowLinks: true,
-        allowUpload: true
+        allowUpload: true,
+        allowLinks: true
       }
     ]
   },
-  film: {
+  [EntryType.Film]: {
+    type: EntryType.Film,
     label: 'Film Session',
     metrics: [
       {
@@ -327,12 +336,11 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         id: 'filmMedia',
         label: 'Film Media',
         description: 'Upload film footage, photos, or stats',
-        acceptedFormats: ['image/*', 'video/*', 'application/pdf'],
-        maxSizeMB: 50,
+        acceptedTypes: ['image/*', 'video/*', 'application/pdf'],
+        maxFiles: 50,
         required: false,
-        multiple: true,
-        allowLinks: true,
-        allowUpload: true
+        allowUpload: true,
+        allowLinks: true
       }
     ]
   }

@@ -13,7 +13,7 @@
  * - Search entries
  */
 
-import { JournalEntry, TrainingType } from '@/types/journal';
+import { JournalEntry, EntryType } from '@/types/journal';
 
 interface JournalState {
   /** All journal entries */
@@ -23,7 +23,7 @@ interface JournalState {
   /** Selected date for new entry */
   selectedDate: string;
   /** Current filter */
-  filter: TrainingType | 'all';
+  filter: EntryType | 'all';
   /** Search query */
   searchQuery: string;
 }
