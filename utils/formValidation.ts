@@ -1,4 +1,4 @@
-import { EntryFormData, JournalEntry, GameEntry } from '@/types/journal'
+import { EntryFormData, GameDetails, GameEntryFormData, JournalEntry } from '@/types/journal'
 import { EntryTypeConfig, Prompt, Metric, MediaConfig } from '@/src/config/entryTypes'
 import Toast from 'react-native-toast-message'
 
@@ -90,6 +90,6 @@ export const validateForm = (
   return true
 }
 
-const isGameEntry = (data: JournalEntry | EntryFormData): data is GameEntry => {
+const isGameEntry = (data: JournalEntry | EntryFormData): data is GameEntryFormData => {
   return data.type === 'game'
 } 

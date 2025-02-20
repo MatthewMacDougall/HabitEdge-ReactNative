@@ -106,7 +106,7 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
         description: 'How would you rate your teamwork?',
         min: 1,
         max: 10
-      }, 
+      },
       {
         id: 'teamPlay',
         label: 'Team Play',
@@ -155,32 +155,17 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
   [EntryType.Practice]: {
     type: EntryType.Practice,
     label: 'Practice',
-    metrics: [
-      ...commonMetrics,
-      {
-        id: 'skillProgress',
-        label: 'Skill Progress',
-        description: 'How effective was the practice session in improving your skills?',
-        min: 1,
-        max: 10
-      }
-    ],
+    metrics: commonMetrics,
     prompts: [
       {
-        id: 'focusAreas',
-        label: 'Focus Areas',
-        placeholder: 'What skills or aspects were emphasized today? Why are they important?',
-        required: true
-      },
-      {
-        id: 'improvements',
-        label: 'Progress Made',
-        placeholder: 'What noticeable improvements did you see?',
+        id: 'highlights',
+        label: 'Practice Areas',
+        placeholder: 'What skills and aspects of the game were focused on today?',
         required: true
       },
       {
         id: 'nextSteps',
-        label: 'Next Steps',
+        label: 'Moving Forward',
         placeholder: 'What do you need to focus on to further improve these skills?',
         required: true
       },

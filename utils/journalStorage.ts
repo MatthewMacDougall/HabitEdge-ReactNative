@@ -27,10 +27,10 @@ export const saveJournalEntries = async (entries: JournalEntry[]): Promise<void>
  */
 export const loadJournalEntries = async (): Promise<JournalEntry[]> => {
   try {
-    const data = await AsyncStorage.getItem(JOURNAL_STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const storedEntries = await AsyncStorage.getItem(JOURNAL_STORAGE_KEY);
+    return storedEntries ? JSON.parse(storedEntries) : [];
   } catch (error) {
-    console.error('Error loading journal entries:', error);
+    console.error('Error loading entries:', error);
     return [];
   }
 };
@@ -51,7 +51,7 @@ export const loadJournalEntry = async (id: number): Promise<JournalEntry | null>
 /**
  * Add a new journal entry
  */
-export const addJournalEntry = async (entry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+export const addJournalEntry = async (entry: EntryFormData): Promise<void> => {
   try {
     const entries = await loadJournalEntries();
     const newEntry: JournalEntry = {
@@ -60,9 +60,9 @@ export const addJournalEntry = async (entry: Omit<JournalEntry, 'id' | 'createdA
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify([newEntry, ...entries]));
+    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify([...entries, newEntry]));
   } catch (error) {
-    console.error('Error adding journal entry:', error);
+    console.error('Error saving entry:', error);
     throw error;
   }
 };
@@ -97,4 +97,13 @@ export const deleteJournalEntry = async (id: number): Promise<void> => {
     console.error('Error deleting journal entry:', error);
     throw error;
   }
-}; 
+};
+
+export const clearAllEntries = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify([]))
+  } catch (error) {
+    console.error('Error clearing entries:', error)
+    throw error
+  }
+} 

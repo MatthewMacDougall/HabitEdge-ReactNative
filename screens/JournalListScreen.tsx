@@ -19,6 +19,7 @@ import {
   FAB,
   Portal,
   Dialog,
+  Menu,
 } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
@@ -32,6 +33,7 @@ import { deleteJournalEntry, loadJournalEntries } from '@/utils/journalStorage';
 import Toast from 'react-native-toast-message';
 import JournalEntryComponent from '@/components/JournalEntry';
 import { JournalEntry as JournalEntryType } from '@/types/journal';
+import { Picker } from '@react-native-picker/picker'
 
 interface UserData {
   name: string;
@@ -62,25 +64,31 @@ export default function JournalListScreen() {
   const colors = Colors[colorScheme];
   const [filter, setFilter] = useState<EntryType | 'all'>('all');
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [showFilter, setShowFilter] = useState(false);
 
   const loadEntries = async () => {
     try {
-      const storedEntries = await AsyncStorage.getItem('journalEntries');
+      setLoading(true)
+      const storedEntries = await loadJournalEntries()
       if (storedEntries) {
-        const parsedEntries = JSON.parse(storedEntries);
         // Sort entries by date, newest first
-        const sortedEntries = parsedEntries.sort((a: JournalEntryType, b: JournalEntryType) => 
+        const sortedEntries = [...storedEntries].sort((a, b) => 
           new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setEntries(sortedEntries);
+        )
+        setEntries(sortedEntries)
       }
     } catch (error) {
-      console.error('Error loading entries:', error);
+      console.error('Error loading entries:', error)
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to load entries',
+        text2: 'Please try again'
+      })
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setLoading(false)
+      setRefreshing(false)
     }
-  };
+  }
 
   const loadUserData = async () => {
     try {
@@ -168,6 +176,20 @@ export default function JournalListScreen() {
     </Surface>
   );
 
+  const handleNewEntry = () => {
+    router.push({
+      pathname: '/entries',
+      params: { id: 'new' }
+    });
+  };
+
+  const handleEditEntry = (id: number) => {
+    router.push({
+      pathname: '/entries',
+      params: { id }
+    });
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -203,12 +225,38 @@ export default function JournalListScreen() {
         inputStyle={{ color: Colors.dark.text }}
       />
 
-      <SegmentedButtons
-        value={filter}
-        onValueChange={value => setFilter(value as EntryType | 'all')}
-        buttons={filterOptions}
-        style={styles.filterButtons}
-      />
+      <Surface style={styles.filterContainer}>
+        <Text style={styles.filterLabel}>Filter by:</Text>
+        <Menu
+          visible={showFilter}
+          onDismiss={() => setShowFilter(false)}
+          anchor={
+            <Button
+              mode="outlined"
+              onPress={() => setShowFilter(true)}
+              icon="filter-variant"
+              contentStyle={styles.filterButton}
+            >
+              {filterOptions.find(opt => opt.value === filter)?.label || 'All'}
+            </Button>
+          }
+        >
+          {filterOptions.map(option => (
+            <Menu.Item
+              key={option.value}
+              onPress={() => {
+                setFilter(option.value as EntryType | 'all')
+                setShowFilter(false)
+              }}
+              title={option.label}
+              titleStyle={[
+                styles.menuItem,
+                filter === option.value && styles.selectedMenuItem
+              ]}
+            />
+          ))}
+        </Menu>
+      </Surface>
 
       <ScrollView
         style={styles.content}
@@ -229,10 +277,7 @@ export default function JournalListScreen() {
             <JournalEntryComponent
               key={entry.id}
               entry={entry}
-              onEdit={() => router.push({
-                pathname: '/(tabs)/entries',
-                params: { id: entry.id }
-              })}
+              onEdit={() => handleEditEntry(Number(entry.id))}
               onDelete={() => setDeleteId(Number(entry.id))}
             />
           ))
@@ -257,7 +302,7 @@ export default function JournalListScreen() {
       <FAB
         icon="plus"
         style={[styles.fab, { backgroundColor: colors.primary }]}
-        onPress={() => router.push('/entries/new')}
+        onPress={handleNewEntry}
       />
     </View>
   );
@@ -282,8 +327,31 @@ const styles = StyleSheet.create({
     margin: 16,
     backgroundColor: Colors.dark.input,
   },
-  filterButtons: {
-    marginBottom: 8,
+  filterContainer: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 8,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  filterLabel: {
+    fontSize: 14,
+    color: Colors.dark.textSecondary,
+    textAlignVertical: 'center',
+  },
+  filterButton: {
+    height: 36,
+    justifyContent: 'center',
+  },
+  menuItem: {
+    color: Colors.dark.text,
+  },
+  selectedMenuItem: {
+    color: Colors.dark.primary,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,

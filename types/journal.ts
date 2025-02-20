@@ -1,3 +1,5 @@
+import { EntryType } from '@/src/config/entryTypes'
+
 /**
  * Represents a journal entry for tracking training sessions
  */
@@ -15,30 +17,13 @@ export interface JournalEntry {
   /** Responses to entry type specific prompts */
   prompts: Record<string, string>;
   /** Optional media attachments */
-  media?: {
-    [key: string]: Array<{
-      type: 'upload' | 'link';
-      url: string;
-      name?: string;
-      title?: string;
-    }>;
-  };
+  media: Record<string, MediaItem[]>;
   /** Optional game-specific details */
   gameDetails?: GameDetails;
   /** Creation timestamp */
   createdAt: string;
   /** Last modified timestamp */
   updatedAt: string;
-}
-
-/**
- * Types of entries that can be logged
- */
-export enum EntryType {
-  Game = 'game',
-  Practice = 'practice',
-  Workout = 'workout',
-  Film = 'film'
 }
 
 /**
@@ -50,23 +35,6 @@ export interface GameScore {
 }
 
 /**
- * Form data for creating/editing entries
- */
-export interface EntryFormData {
-  type: string;
-  metrics: Record<string, number>;
-  prompts: Record<string, string>;
-  media: Record<string, any>;
-  gameDetails?: GameDetails;
-}
-
-// Then create a type guard or specific interface for game entries
-export interface GameEntryFormData extends EntryFormData {
-  type: 'game';
-  gameDetails: GameDetails;
-}
-
-/**
  * Game details
  */
 export interface GameDetails {
@@ -75,7 +43,34 @@ export interface GameDetails {
   score: GameScore;
 }
 
-export interface GameEntry extends JournalEntry {
-  type: 'game';
+export interface MediaItem {
+  type: 'upload' | 'link';
+  url: string;
+  name?: string;
+  title?: string;
+}
+
+/**
+ * Form data for creating/editing entries
+ */
+export type EntryFormData = Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & {
+  type: EntryType;
+  date: string;
+  title: string;
+  metrics: Record<string, number>;
+  prompts: Record<string, string>;
+  media: Record<string, MediaItem[]>;
   gameDetails: GameDetails;
-} 
+}
+
+// Then create a type guard or specific interface for game entries
+export interface GameEntryFormData extends EntryFormData {
+  type: EntryType.Game;
+  gameDetails: GameDetails;
+}
+
+export interface JournalState {
+  entries: JournalEntry[];
+  loading: boolean;
+  error: string | null;
+}
