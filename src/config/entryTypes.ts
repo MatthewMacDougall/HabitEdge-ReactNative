@@ -278,6 +278,13 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
     label: 'Film Session',
     metrics: [
       {
+        id: 'overallRating',
+        label: 'Rating',
+        description: 'How would you rate the film session?',
+        min: 1,
+        max: 10
+      },
+      {
         id: 'effectiveness',
         label: 'Effectiveness',
         description: 'How effective was the film session?',
