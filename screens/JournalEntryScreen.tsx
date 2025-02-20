@@ -1,13 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { View, ScrollView, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native'
 import { TextInput, SegmentedButtons, Text, Surface, Button, IconButton } from 'react-native-paper'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { EntryType, entryTypeConfigs } from '@/src/config/entryTypes'
 import { EntryFormData, GameScore } from '@/types/journal'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import Slider from '@react-native-community/slider'
 import { Colors } from '@/constants/Colors'
-import { addJournalEntry } from '@/utils/journalStorage'
+import { addJournalEntry, loadJournalEntry, updateJournalEntry } from '@/utils/journalStorage'
 import Toast from 'react-native-toast-message'
 import { SharedStyles } from '@/constants/Styles'
 import { Picker } from '@react-native-picker/picker'
@@ -30,9 +30,41 @@ const createEmptyEntry = (): EntryFormData => ({
 
 export default function JournalEntryScreen() {
   const router = useRouter()
+  const { id } = useLocalSearchParams()
   const [entry, setEntry] = useState<EntryFormData>(createEmptyEntry())
   const config = entryTypeConfigs[entry.type]
   const [linkInput, setLinkInput] = useState<Record<string, string>>({})
+
+  // Reset form when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || id === 'new') {
+        setEntry(createEmptyEntry())
+      } else {
+        loadExistingEntry()
+      }
+
+      // Reset form when screen loses focus
+      return () => {
+        setEntry(createEmptyEntry())
+      }
+    }, [id])
+  )
+
+  const loadExistingEntry = async () => {
+    try {
+      const existingEntry = await loadJournalEntry(Number(id))
+      if (existingEntry) {
+        setEntry(existingEntry)
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to load entry'
+      })
+      setEntry(createEmptyEntry())
+    }
+  }
 
   const handleMetricChange = (metricId: string, value: number) => {
     setEntry(prev => ({
@@ -86,51 +118,35 @@ export default function JournalEntryScreen() {
   }
 
   const handleSubmit = async () => {
-    const errors: string[] = []
-
-    if (entry.type === EntryType.Game && !entry.gameDetails?.opponent) {
-      errors.push('Opponent name is required')
-    }
-
-    const missingMetrics = config.metrics
-      .filter(metric => !entry.metrics[metric.id])
-      .map(metric => metric.label)
-
-    if (missingMetrics.length > 0) {
-      errors.push(`Missing metrics: ${missingMetrics.join(', ')}`)
-    }
-
-    const missingPrompts = config.prompts
-      .filter(prompt => !entry.prompts[prompt.id] && prompt.required)
-      .map(prompt => prompt.label)
-
-    if (missingPrompts.length > 0) {
-      errors.push(`Missing prompts: ${missingPrompts.join(', ')}`)
-    }
-
-    const missingMedia = config.media
-      ?.filter(media => media.required && !entry.media[media.id]?.length)
-      .map(media => media.label)
-
-    if (missingMedia?.length) {
-      errors.push(`Missing media: ${missingMedia.join(', ')}`)
-    }
-
-    if (errors.length > 0) {
-      Toast.show({
-        type: 'error',
-        text1: 'Please fill in all required fields',
-        text2: errors[0],
-      })
-      return
-    }
-
     try {
-      await addJournalEntry(entry)
-      Toast.show({ type: 'success', text1: 'Entry saved successfully' })
+      const errors = validateEntry(entry, config)
+      if (errors.length > 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Please fill in all required fields',
+          text2: errors[0],
+        })
+        return
+      }
+
+      if (id && id !== 'new') {
+        await updateJournalEntry(Number(id), entry)
+      } else {
+        await addJournalEntry(entry)
+      }
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Entry saved successfully'
+      })
+      
+      setEntry(createEmptyEntry())
       router.back()
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Failed to save entry' })
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to save entry'
+      })
     }
   }
 
@@ -576,4 +592,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-}) 
+})
+
+function validateEntry(entry: EntryFormData, config: any) {
+  const errors: string[] = []
+
+  if (entry.type === 'game' && !entry.gameDetails?.opponent) {
+    errors.push('Opponent name is required')
+  }
+
+  const missingMetrics = config.metrics
+    .filter((metric: any) => !entry.metrics[metric.id])
+    .map((metric: any) => metric.label)
+
+  if (missingMetrics.length > 0) {
+    errors.push(`Missing metrics: ${missingMetrics.join(', ')}`)
+  }
+
+  const missingPrompts = config.prompts
+    .filter((prompt: any) => !entry.prompts[prompt.id] && prompt.required)
+    .map((prompt: any) => prompt.label)
+
+  if (missingPrompts.length > 0) {
+    errors.push(`Missing prompts: ${missingPrompts.join(', ')}`)
+  }
+
+  const missingMedia = config.media
+    ?.filter((media: any) => media.required && !entry.media[media.id]?.length)
+    .map((media: any) => media.label)
+
+  if (missingMedia?.length) {
+    errors.push(`Missing media: ${missingMedia.join(', ')}`)
+  }
+
+  return errors
+} 

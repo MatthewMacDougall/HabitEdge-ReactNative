@@ -12,7 +12,7 @@
  * - Target linking
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { View, ScrollView, StyleSheet } from 'react-native'
 import { TextInput, SegmentedButtons, Text, Surface } from 'react-native-paper'
 import { EntryType, entryTypeConfigs } from '@/src/config/entryTypes'
@@ -22,22 +22,24 @@ import Slider from '@react-native-community/slider'
 import { Colors } from '@/constants/Colors'
 
 interface Props {
-  entry: EntryFormData
-  onChange: (entry: EntryFormData) => void
+  initialEntry: EntryFormData
+  onSubmit: (entry: EntryFormData) => Promise<void>
+  mode: 'new' | 'edit'
 }
 
-export function JournalEntryForm({ entry, onChange }: Props) {
+export default function JournalEntryForm({ initialEntry, onSubmit, mode }: Props) {
+  const [entry, setEntry] = useState(initialEntry)
   const config = entryTypeConfigs[entry.type]
 
   const handleChange = (field: keyof EntryFormData, value: any) => {
-    onChange({
+    setEntry({
       ...entry,
       [field]: value
     })
   }
 
   const handlePromptChange = (promptId: string, value: string) => {
-    onChange({
+    setEntry({
       ...entry,
       prompts: {
         ...entry.prompts,
@@ -47,13 +49,21 @@ export function JournalEntryForm({ entry, onChange }: Props) {
   }
 
   const handleMetricChange = (metricId: string, value: number) => {
-    onChange({
+    setEntry({
       ...entry,
       metrics: {
         ...entry.metrics,
         [metricId]: parseFloat(value.toFixed(1))
       }
     })
+  }
+
+  const handleSubmit = async () => {
+    try {
+      await onSubmit(entry)
+    } catch (error) {
+      console.error('Error submitting entry:', error)
+    }
   }
 
   return (

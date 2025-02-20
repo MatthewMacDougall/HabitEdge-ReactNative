@@ -41,16 +41,16 @@ interface UserData {
 }
 
 interface FilterOption {
-  value: EntryType | 'all';
+  value: 'all' | 'game' | 'practice' | 'workout' | 'film';
   label: string;
 }
 
 const filterOptions: FilterOption[] = [
   { value: 'all', label: 'All' },
-  { value: EntryType.Game, label: 'Games' },
-  { value: EntryType.Practice, label: 'Practice' },
-  { value: EntryType.Workout, label: 'Workouts' },
-  { value: EntryType.Film, label: 'Film' }
+  { value: 'game', label: 'Games' },
+  { value: 'practice', label: 'Practice' },
+  { value: 'workout', label: 'Workouts' },
+  { value: 'film', label: 'Film' }
 ];
 
 export default function JournalListScreen() {
@@ -62,7 +62,7 @@ export default function JournalListScreen() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme];
-  const [filter, setFilter] = useState<EntryType | 'all'>('all');
+  const [filter, setFilter] = useState<'all' | 'game' | 'practice' | 'workout' | 'film'>('all');
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showFilter, setShowFilter] = useState(false);
 
@@ -124,8 +124,10 @@ export default function JournalListScreen() {
     if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
     return (
-      entry.type.toLowerCase().includes(searchLower) ||
-      entry.prompts.highlights?.toLowerCase().includes(searchLower) ||
+      entry.title.toLowerCase().includes(searchLower) ||
+      Object.values(entry.prompts).some(prompt => 
+        prompt?.toLowerCase().includes(searchLower)
+      ) ||
       entry.gameDetails?.opponent?.toLowerCase().includes(searchLower)
     );
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -183,12 +185,19 @@ export default function JournalListScreen() {
     });
   };
 
+  const handleViewEntry = (id: number) => {
+    router.push({
+      pathname: '/journal/[id]',
+      params: { id: id.toString() }
+    })
+  }
+
   const handleEditEntry = (id: number) => {
     router.push({
-      pathname: '/entries',
-      params: { id }
-    });
-  };
+      pathname: '/journal/edit/[id]',
+      params: { id: id.toString() }
+    })
+  }
 
   if (loading) {
     return (
@@ -245,7 +254,7 @@ export default function JournalListScreen() {
             <Menu.Item
               key={option.value}
               onPress={() => {
-                setFilter(option.value as EntryType | 'all')
+                setFilter(option.value as 'all' | 'game' | 'practice' | 'workout' | 'film')
                 setShowFilter(false)
               }}
               title={option.label}
@@ -277,8 +286,9 @@ export default function JournalListScreen() {
             <JournalEntryComponent
               key={entry.id}
               entry={entry}
-              onEdit={() => handleEditEntry(Number(entry.id))}
-              onDelete={() => setDeleteId(Number(entry.id))}
+              onEdit={() => handleEditEntry(entry.id)}
+              onView={() => handleViewEntry(entry.id)}
+              onDelete={() => setDeleteId(entry.id)}
             />
           ))
         ) : (
