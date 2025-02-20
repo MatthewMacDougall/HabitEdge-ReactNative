@@ -23,6 +23,10 @@ import { SharedStyles } from '@/constants/Styles'
 import { loadTargets } from '@/utils/storage'
 import { Target } from '@/types/targets'
 import { useTheme } from '@/contexts/ThemeContext'
+import { loadJournalEntries } from '@/utils/journalStorage'
+import { JournalEntry } from '@/types/journal'
+import { format } from 'date-fns'
+import { entryTypeConfigs } from '@/src/config/entryTypes'
 
 // Mock data - replace with actual API calls
 const mockJournalEntries = [
@@ -55,14 +59,17 @@ const calculateProgress = (target: Target): number => {
 export default function DashboardScreen() {
   const router = useRouter()
   const [streak, setStreak] = useState(0)
-  const [recentEntries, setRecentEntries] = useState(mockJournalEntries)
+  const [recentEntries, setRecentEntries] = useState<JournalEntry[]>([])
   const [priorityTarget, setPriorityTarget] = useState<Target | null>(null)
   const { theme } = useTheme();
   const colors = Colors[theme];
 
   useEffect(() => {
     // Calculate streak stats when entries change
-    const stats = getStreakStats(recentEntries)
+    const stats = getStreakStats(recentEntries.map(entry => ({
+      ...entry,
+      timestamp: entry.date // Map date field to expected timestamp field
+    })))
     setStreak(stats.currentStreak)
     
     // You can also use other stats:
@@ -94,6 +101,29 @@ export default function DashboardScreen() {
     loadPriorityTarget();
   }, []);
 
+  const loadRecentEntries = async () => {
+    try {
+      const entries = await loadJournalEntries()
+      if (!entries.length) {
+        setRecentEntries([])
+        return
+      }
+      
+      const sorted = entries.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      )
+      // Takes up to 3 entries, works with 1 or 2 entries as well
+      setRecentEntries(sorted.slice(0, 3))
+    } catch (error) {
+      console.error('Error loading recent entries:', error)
+      setRecentEntries([])
+    }
+  }
+
+  useEffect(() => {
+    loadRecentEntries()
+  }, [])
+
   const chartData = {
     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     datasets: [{
@@ -101,6 +131,18 @@ export default function DashboardScreen() {
       color: () => colors.primary,
       strokeWidth: 2
     }]
+  }
+
+  const getRatingColor = (rating: number) => {
+    if (rating <= 5) return Colors.dark.error
+    if (rating <= 7) return Colors.dark.secondary
+    return Colors.dark.success
+  }
+
+  const getMainRating = (entry: JournalEntry) => {
+    const config = entryTypeConfigs[entry.type]
+    const mainMetricId = config.metrics[0]?.id // Get first metric
+    return entry.metrics[mainMetricId] || 0
   }
 
   return (
@@ -169,39 +211,60 @@ export default function DashboardScreen() {
         </Card>
       )}
 
-<Card style={SharedStyles.card}>
-        <Card.Title 
-          title="Recent Entries"
-          titleStyle={styles.cardTitle}
-          right={(props) => (
-            <IconButton
-              {...props}
-              icon="chevron-right"
-              iconColor={colors.primary}
-              onPress={() => router.push('/(tabs)/journal')}
-            />
-          )}
-        />
-        <Card.Content>
-          {recentEntries.map(entry => (
-            <Surface key={entry.id} style={styles.entryItem}>
-              <View>
-                <Text variant="titleMedium" style={styles.entryTitle}>{entry.title}</Text>
-                <Text variant="bodySmall" style={styles.entryDate}>
-                  {new Date(entry.timestamp).toLocaleDateString()}
-                </Text>
-              </View>
-              <View style={styles.metrics}>
-                {Object.entries(entry.metrics).map(([key, value]) => (
-                  <Text key={key} variant="bodySmall" style={styles.metric}>
-                    {key}: {value}/10
-                  </Text>
-                ))}
-              </View>
-            </Surface>
-          ))}
-        </Card.Content>
-      </Card>
+      <Surface style={[SharedStyles.card, styles.recentEntries]}>
+        <View style={[styles.cardHeader, styles.cardPadding]}>
+          <Text variant="titleMedium" style={styles.cardTitle}>Recent Entries</Text>
+          <Button 
+            mode="text" 
+            onPress={() => router.push('/(tabs)/journal')}
+          >
+            View All
+          </Button>
+        </View>
+
+        {recentEntries.length > 0 ? (
+          recentEntries.map(entry => {
+            const rating = getMainRating(entry)
+            const config = entryTypeConfigs[entry.type]
+            return (
+              <Card 
+                key={entry.id} 
+                style={styles.entryCard}
+                onPress={() => router.push({
+                  pathname: '/journal/[id]',
+                  params: { id: entry.id.toString() }
+                })}
+              >
+                <Card.Content>
+                  <View style={styles.entryHeader}>
+                    <View style={styles.entryInfo}>
+                      <Text style={styles.entryTitle}>
+                        {entry.title || config.label}
+                      </Text>
+                      <Text style={styles.entryDate}>
+                        {format(new Date(entry.date), 'MMM d, yyyy')}
+                      </Text>
+                    </View>
+                    <View style={styles.ratingContainer}>
+                      <Text style={styles.performanceLabel}>
+                        {config.metrics[0]?.label || 'Rating'}
+                      </Text>
+                      <Text style={[
+                        styles.performanceValue,
+                        { color: getRatingColor(rating) }
+                      ]}>
+                        {rating.toFixed(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </Card.Content>
+              </Card>
+            )
+          })
+        ) : (
+          <Text style={styles.emptyText}>No entries yet</Text>
+        )}
+      </Surface>
 
       <Card 
         style={[SharedStyles.card, styles.chartCard]}
@@ -320,28 +383,48 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: Colors.dark.text,
     fontWeight: 'bold',
+    fontSize: 18,
   },
-  entryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  entryCard: {
     padding: 12,
     marginBottom: 8,
     borderRadius: 8,
-    backgroundColor: Colors.dark.input,
+    backgroundColor: Colors.dark.card,
+  },
+  entryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  entryInfo: {
+    flex: 1,
   },
   entryTitle: {
-    color: Colors.dark.text,
+    fontSize: 16,
     fontWeight: '500',
+    color: Colors.dark.text,
+    marginBottom: 4,
   },
   entryDate: {
+    fontSize: 14,
     color: Colors.dark.textSecondary,
   },
-  metrics: {
+  ratingContainer: {
     alignItems: 'flex-end',
   },
-  metric: {
+  performanceLabel: {
+    fontSize: 14,
     color: Colors.dark.textSecondary,
+  },
+  performanceValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyText: {
+    color: Colors.dark.textSecondary,
+    textAlign: 'center',
+    marginVertical: 16,
   },
   chartWrapper: {
     alignItems: 'center',
@@ -382,5 +465,17 @@ const styles = StyleSheet.create({
   deadline: {
     color: Colors.dark.textSecondary,
     fontSize: 14,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  recentEntries: {
+    marginBottom: 24,
+  },
+  cardPadding: {
+    padding: 16,
   },
 }) 
