@@ -7,7 +7,7 @@ import { EntryFormData, GameScore } from '@/types/journal'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import Slider from '@react-native-community/slider'
 import { Colors } from '@/constants/Colors'
-import { addJournalEntry, loadJournalEntry, updateJournalEntry } from '@/utils/journalStorage'
+import { addJournalEntry, loadJournalEntry, updateJournalEntry, loadJournalEntries } from '@/utils/journalStorage'
 import Toast from 'react-native-toast-message'
 import { SharedStyles } from '@/constants/Styles'
 import { Picker } from '@react-native-picker/picker'
@@ -106,31 +106,45 @@ export default function JournalEntryScreen() {
 
   const handleSubmit = async () => {
     try {
-      const errors = validateEntry(entry, config)
-      if (errors.length > 0) {
+      if (!entry.title.trim()) {
         Toast.show({
           type: 'error',
-          text1: 'Please fill in all required fields',
-          text2: errors[0],
-        })
-        return
+          text1: 'Please enter a title'
+        });
+        return;
       }
 
-      await addJournalEntry(entry)
+      const metricsWithDefaults = config.metrics.reduce((acc, metric) => ({
+        ...acc,
+        [metric.id]: entry.metrics[metric.id] || 5.0
+      }), {});
+
+      const entryToSave: EntryFormData = {
+        ...entry,
+        metrics: metricsWithDefaults,
+        prompts: entry.prompts || {},
+        media: entry.media || {},
+        gameDetails: entry.type === EntryType.Game ? entry.gameDetails : undefined,
+        filmDetails: entry.type === EntryType.Film ? entry.filmDetails : undefined
+      };
+
+      await addJournalEntry(entryToSave);
+
       Toast.show({
         type: 'success',
         text1: 'Entry saved successfully'
-      })
+      });
       
-      setEntry(createEmptyEntry())
-      router.back()
+      setEntry(createEmptyEntry());
+      router.back();
     } catch (error) {
       Toast.show({
         type: 'error',
-        text1: 'Failed to save entry'
-      })
+        text1: 'Failed to save entry',
+        text2: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
-  }
+  };
 
   const handleMediaUpload = async (mediaId: string) => {
     try {
@@ -711,35 +725,30 @@ const styles = StyleSheet.create({
 })
 
 function validateEntry(entry: EntryFormData, config: any) {
-  const errors: string[] = []
+  const errors: string[] = [];
 
-  if (entry.type === 'game' && !entry.gameDetails?.opponent) {
-    errors.push('Opponent name is required')
+  if (!entry.title.trim()) {
+    errors.push('Title is required');
   }
 
-  const missingMetrics = config.metrics
-    .filter((metric: any) => !entry.metrics[metric.id])
-    .map((metric: any) => metric.label)
-
-  if (missingMetrics.length > 0) {
-    errors.push(`Missing metrics: ${missingMetrics.join(', ')}`)
+  // Only validate game details if it's a game entry
+  if (entry.type === EntryType.Game && !entry.gameDetails?.opponent) {
+    errors.push('Opponent name is required');
   }
 
+  // Only validate film details if it's a film entry
+  if (entry.type === EntryType.Film && !entry.filmDetails?.filmType) {
+    errors.push('Film type is required');
+  }
+
+  // Only check required prompts
   const missingPrompts = config.prompts
-    .filter((prompt: any) => !entry.prompts[prompt.id] && prompt.required)
-    .map((prompt: any) => prompt.label)
+    .filter((prompt: any) => prompt.required && !entry.prompts[prompt.id])
+    .map((prompt: any) => prompt.label);
 
   if (missingPrompts.length > 0) {
-    errors.push(`Missing prompts: ${missingPrompts.join(', ')}`)
+    errors.push(`Required prompts missing: ${missingPrompts.join(', ')}`);
   }
 
-  const missingMedia = config.media
-    ?.filter((media: any) => media.required && !entry.media[media.id]?.length)
-    .map((media: any) => media.label)
-
-  if (missingMedia?.length) {
-    errors.push(`Missing media: ${missingMedia.join(', ')}`)
-  }
-
-  return errors
+  return errors;
 } 

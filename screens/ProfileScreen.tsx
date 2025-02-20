@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Card, List, Avatar, Surface } from 'react-native-paper';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { SharedStyles } from '@/constants/Styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserRegistration } from '@/types/onboarding';
 import { getSportById } from '@/config/sports';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -22,26 +23,15 @@ export default function ProfileScreen() {
     recentPerformance: 0
   });
 
-  // Load user data
-  useEffect(() => {
-    const loadUserData = async () => {
-      const userJson = await AsyncStorage.getItem('userRegistration');
-      if (userJson) {
-        setUserData(JSON.parse(userJson));
-      }
-    };
-    loadUserData();
-  }, []);
-
-  // Load stats
-  useEffect(() => {
-    const loadStats = async () => {
-      const journalJson = await AsyncStorage.getItem('journal_entries');
+  // Update the loadStats function
+  const loadStats = async () => {
+    try {
+      const journalJson = await AsyncStorage.getItem(STORAGE_KEY);
       const journalEntries = journalJson ? JSON.parse(journalJson) : [];
       
       const targetsJson = await AsyncStorage.getItem('targets');
       const targets = targetsJson ? JSON.parse(targetsJson) : [];
-      
+
       // Calculate target completion status
       const isTargetCompleted = (target: any): boolean => {
         if (target.type === 'boolean') {
@@ -54,22 +44,69 @@ export default function ProfileScreen() {
       const ongoingTargets = targets.filter((t: any) => !isTargetCompleted(t));
       const completedTargets = targets.filter((t: any) => isTargetCompleted(t));
 
-      // Calculate average performance rating from last 5 entries
-      const recentEntries = journalEntries
-        .slice(0, 5)
-        .map((entry: any) => entry.metrics?.overallRating || 0);
-      const recentPerformance = recentEntries.length 
-        ? recentEntries.reduce((a: number, b: number) => a + b, 0) / recentEntries.length
+      // Calculate average rating using only overall performance/rating metrics
+      const entriesWithRatings = journalEntries.filter((entry: any) => {
+        if (!entry.metrics) return false;
+        
+        if (['game', 'practice', 'workout'].includes(entry.type)) {
+          return 'overallRating' in entry.metrics;
+        }
+        if (entry.type === 'film') {
+          return 'rating' in entry.metrics;
+        }
+        return false;
+      });
+      
+      const avgRating = entriesWithRatings.length > 0 
+        ? entriesWithRatings.reduce((sum: number, entry: any) => {
+            const rating = entry.type === 'film' 
+              ? entry.metrics.rating 
+              : entry.metrics.overallRating;
+            return sum + rating;
+          }, 0) / entriesWithRatings.length
         : 0;
 
       setStats({
         journalCount: journalEntries.length,
         activeTargets: ongoingTargets.length,
         completedTargets: completedTargets.length,
-        recentPerformance: Math.round(recentPerformance * 10) / 10
+        recentPerformance: Math.round(avgRating * 10) / 10
       });
-    };
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      setStats({
+        journalCount: 0,
+        activeTargets: 0,
+        completedTargets: 0,
+        recentPerformance: 0
+      });
+    }
+  };
+
+  // Make sure we're using the same storage key
+  const STORAGE_KEY = 'journal_entries';
+
+  // Initial load
+  useEffect(() => {
     loadStats();
+  }, []);
+
+  // Add useFocusEffect to refresh stats when returning to the screen
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [])
+  );
+
+  // Load user data
+  useEffect(() => {
+    const loadUserData = async () => {
+      const userJson = await AsyncStorage.getItem('userRegistration');
+      if (userJson) {
+        setUserData(JSON.parse(userJson));
+      }
+    };
+    loadUserData();
   }, []);
 
   // Get initials for avatar

@@ -3,9 +3,9 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { JournalEntry } from '@/types/journal';
+import { JournalEntry, EntryFormData } from '@/types/journal';
 
-const JOURNAL_STORAGE_KEY = 'journalEntries';
+const STORAGE_KEY = 'journal_entries';
 
 /**
  * Save journal entries to storage
@@ -15,7 +15,7 @@ export const saveJournalEntries = async (entries: JournalEntry[]): Promise<void>
     const sortedEntries = entries.sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(sortedEntries));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sortedEntries));
   } catch (error) {
     console.error('Error saving journal entries:', error);
     throw error;
@@ -27,10 +27,15 @@ export const saveJournalEntries = async (entries: JournalEntry[]): Promise<void>
  */
 export const loadJournalEntries = async (): Promise<JournalEntry[]> => {
   try {
-    const storedEntries = await AsyncStorage.getItem(JOURNAL_STORAGE_KEY);
-    return storedEntries ? JSON.parse(storedEntries) : [];
+    const entriesJson = await AsyncStorage.getItem(STORAGE_KEY);
+    
+    if (!entriesJson) {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+      return [];
+    }
+    
+    return JSON.parse(entriesJson);
   } catch (error) {
-    console.error('Error loading entries:', error);
     return [];
   }
 };
@@ -51,18 +56,22 @@ export const loadJournalEntry = async (id: number): Promise<JournalEntry | null>
 /**
  * Add a new journal entry
  */
-export const addJournalEntry = async (entry: EntryFormData): Promise<void> => {
+export const addJournalEntry = async (entry: EntryFormData): Promise<JournalEntry> => {
   try {
-    const entries = await loadJournalEntries();
+    const existingEntries = await loadJournalEntries();
+    
     const newEntry: JournalEntry = {
       ...entry,
       id: Date.now(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify([...entries, newEntry]));
+    
+    const updatedEntries = [...existingEntries, newEntry];
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries));
+    
+    return newEntry;
   } catch (error) {
-    console.error('Error saving entry:', error);
     throw error;
   }
 };
@@ -78,7 +87,7 @@ export const updateJournalEntry = async (id: number, updates: Partial<JournalEnt
         ? { ...entry, ...updates, updatedAt: new Date().toISOString() }
         : entry
     );
-    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(updatedEntries));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries));
   } catch (error) {
     console.error('Error updating journal entry:', error);
     throw error;
@@ -92,7 +101,7 @@ export const deleteJournalEntry = async (id: number): Promise<void> => {
   try {
     const entries = await loadJournalEntries();
     const filteredEntries = entries.filter(entry => entry.id !== id);
-    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify(filteredEntries));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filteredEntries));
   } catch (error) {
     console.error('Error deleting journal entry:', error);
     throw error;
@@ -101,7 +110,7 @@ export const deleteJournalEntry = async (id: number): Promise<void> => {
 
 export const clearAllEntries = async (): Promise<void> => {
   try {
-    await AsyncStorage.setItem(JOURNAL_STORAGE_KEY, JSON.stringify([]))
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]))
   } catch (error) {
     console.error('Error clearing entries:', error)
     throw error
