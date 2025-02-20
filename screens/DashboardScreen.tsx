@@ -148,7 +148,10 @@ export default function DashboardScreen() {
   return (
     <ScrollView 
       style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}
-      contentContainerStyle={SharedStyles.contentContainer}
+      contentContainerStyle={[
+        SharedStyles.contentContainer,
+        styles.scrollContent
+      ]}
     >
       <View style={styles.headerContainer}>
         <Text variant="headlineMedium" style={[styles.headerTitle, { color: colors.text }]}>Dashboard</Text>
@@ -477,5 +480,8 @@ const styles = StyleSheet.create({
   },
   cardPadding: {
     padding: 16,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
 }) 

@@ -231,16 +231,11 @@ export default function TargetsScreen() {
 
     try {
       const now = new Date().toISOString();
-      console.log('Updating progress:', {
-        targetId: selectedTarget.id,
-        isBoolean: selectedTarget.type === 'boolean',
-        now
-      });
 
       if (selectedTarget.type === 'boolean') {
         const updatedTargets = targets.map(target => {
           if (target.id === selectedTarget.id) {
-            const updatedTarget = {
+            return {
               ...target,
               completed: true,
               completedAt: now,
@@ -251,8 +246,6 @@ export default function TargetsScreen() {
                 timestamp: progressDate
               }]
             };
-            console.log('Updated boolean target:', updatedTarget);
-            return updatedTarget;
           }
           return target;
         });
@@ -667,7 +660,11 @@ export default function TargetsScreen() {
 
       <ScrollView 
         style={styles.targetsList}
-        contentContainerStyle={SharedStyles.contentContainer}
+        contentContainerStyle={[
+          SharedStyles.contentContainer,
+          styles.scrollContent,
+          getFilteredTargets().length === 0 && styles.emptyContainer
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -1410,5 +1407,12 @@ const styles = StyleSheet.create({
   completionStatus: {
     fontSize: 12,
     marginTop: 4,
+  },
+  scrollContent: {
+    paddingBottom: 120,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
 }) 

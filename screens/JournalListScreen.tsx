@@ -268,16 +268,15 @@ export default function JournalListScreen() {
       </Surface>
 
       <ScrollView
-        style={styles.content}
+        style={[SharedStyles.screenContainer, { backgroundColor: colors.background }]}
         contentContainerStyle={[
           SharedStyles.contentContainer,
-          !filteredEntries.length && styles.emptyContainer
+          styles.scrollContent
         ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.dark.primary}
           />
         }
       >
@@ -412,5 +411,8 @@ const styles = StyleSheet.create({
   filmTypeLabel: {
     color: Colors.dark.textSecondary,
     fontSize: 14,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
 });
