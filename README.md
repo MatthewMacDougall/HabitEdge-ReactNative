@@ -12,45 +12,76 @@ A mobile application designed to help athletes track their targets, habits, and 
 - Mark boolean targets as complete
 - Edit and delete existing targets
 
-### Journal
-- Track daily training sessions
-- Record workout details and notes
+### Training Journal
+- Log different types of training sessions (practice, game, etc.)
+- Record workout details, scores, and notes
+- Edit and delete journal entries
+- Filter and search through past entries
 - Monitor progress over time
 
-### Dashboard (Coming Soon)
+### Dashboard
 - Overview of active targets
-- Recent progress updates
+- Recent journal entries
 - Quick-access to common actions
 - Progress insights and statistics
 
+### Profile & Settings
+- View and edit user profile information
+- Access detailed performance insights
+- Customize app preferences
+- Manage notification settings
+- View app statistics and usage metrics
+
 ## Technical Stack
 
-- React Native with Expo
+- React Native with Expo Router
 - TypeScript for type safety
 - React Native Paper for UI components
 - AsyncStorage for local data persistence
-- React Navigation for routing
 
 ## Project Structure
 
 ```
-src/
-├── app/                # Expo Router app directory
-│   ├── (tabs)/        # Tab-based navigation
-│   └── _layout.tsx    # Root layout configuration
-├── screens/           # Main screen components
-│   ├── TargetsScreen.tsx     # Targets management
-│   ├── JournalScreen.tsx   # Training journal
-│   └── DashboardScreen.tsx # Overview dashboard
-├── components/        # Reusable UI components
-│   └── ui/           # Basic UI components
-├── constants/        # App-wide constants
-│   ├── Colors.ts    # Theme colors
-│   └── Styles.ts    # Shared styles
-├── types/           # TypeScript definitions
-│   └── targets.ts     # Target-related types
-└── utils/           # Utility functions
-    └── storage.ts   # AsyncStorage helpers
+app/
+├── (tabs)/              # Tab-based navigation
+│   ├── dashboard.tsx    # Dashboard screen
+│   ├── entries/        # Journal entries routes
+│   │   ├── [id].tsx    # Entry details/edit
+│   │   └── index.tsx   # Entries list
+│   ├── insights.tsx    # Insights screen
+│   ├── profile.tsx     # Profile screen
+│   ├── settings.tsx    # Settings screen
+│   └── targets/       # Targets routes
+│       ├── [id].tsx   # Target details/edit
+│       └── index.tsx  # Targets list
+├── _layout.tsx         # Root layout configuration
+├── onboarding.tsx      # Onboarding screen
+└── +not-found.tsx      # 404 screen
+components/
+├── __tests__/         # Component tests
+├── dialogs/           # Dialog components
+├── sections/          # Screen sections
+├── ui/                # UI components
+├── JournalEntry.tsx
+├── ProgressBar.tsx
+├── SearchBar.tsx
+├── TargetCard.tsx
+└── [other .tsx files] # Individual components
+constants/
+├── Colors.ts         # Theme colors
+└── Styles.ts         # Shared styles
+screens/              # Screen components
+├── JournalListScreen.tsx
+├── EditJournalEntryScreen.tsx
+├── TargetListScreen.tsx
+└── EditTargetScreen.tsx
+types/
+├── journal.ts        # Journal-related types
+├── navigation.ts     # Navigation types
+└── targets.ts        # Target-related types
+utils/
+├── storage.ts        # AsyncStorage helpers
+└── formValidation.ts # Form validation helpers
 ```
 
 ## Getting Started
