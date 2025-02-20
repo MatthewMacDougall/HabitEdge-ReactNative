@@ -137,6 +137,16 @@ export default function JournalEntry({ entry, onEdit, onDelete, onView }: Props)
             {entry.prompts.notes}
           </Text>
         )}
+
+        {entry.type === 'film' && entry.filmDetails && (
+          <Text style={styles.filmType}>
+            Film Type: {
+              entryTypeConfigs[entry.type].filmDetails?.options.find(
+                opt => opt.value === entry.filmDetails?.filmType
+              )?.label
+            }
+          </Text>
+        )}
       </Card.Content>
     </Card>
   );
@@ -209,5 +219,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
     lineHeight: 20,
+  },
+  filmType: {
+    color: Colors.dark.textSecondary,
+    fontSize: 14,
+    marginTop: 4,
   },
 }); 

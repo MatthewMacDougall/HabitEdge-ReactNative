@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import { View, ScrollView, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native'
-import { TextInput, SegmentedButtons, Text, Surface, Button, Menu } from 'react-native-paper'
+import { TextInput, SegmentedButtons, Text, Surface, Button, Menu, IconButton } from 'react-native-paper'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { loadJournalEntry, updateJournalEntry } from '@/utils/journalStorage'
-import { EntryFormData } from '@/types/journal'
+import { EntryFormData, MediaItem } from '@/types/journal'
 import { Colors } from '@/constants/Colors'
 import { SharedStyles } from '@/constants/Styles'
 import { entryTypeConfigs } from '@/src/config/entryTypes'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import Slider from '@react-native-community/slider'
 import Toast from 'react-native-toast-message'
+import { EntryType } from '@/src/config/entryTypes'
+import * as ImagePicker from 'expo-image-picker'
+import { Image } from 'react-native'
+import { FilmDetails } from '@/src/config/entryTypes'
 
 export default function EditJournalEntryScreen() {
   const { id } = useLocalSearchParams()
   const router = useRouter()
   const [entry, setEntry] = useState<EntryFormData | null>(null)
   const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const [showFilmTypeMenu, setShowFilmTypeMenu] = useState(false)
+  const [linkInput, setLinkInput] = useState<Record<string, string>>({})
 
   useEffect(() => {
     loadExistingEntry()
@@ -25,7 +31,21 @@ export default function EditJournalEntryScreen() {
     try {
       const existingEntry = await loadJournalEntry(Number(id))
       if (existingEntry) {
-        setEntry(existingEntry)
+        const editableEntry: EntryFormData = {
+          ...existingEntry,
+          gameDetails: existingEntry.gameDetails || {
+            opponent: '',
+            score: { yourTeam: '0', opponent: '0' },
+            result: 'draw'
+          },
+          filmDetails: existingEntry.filmDetails || {
+            filmType: 'pros'
+          },
+          metrics: existingEntry.metrics || {},
+          prompts: existingEntry.prompts || {},
+          media: existingEntry.media || {}
+        }
+        setEntry(editableEntry)
       }
     } catch (error) {
       Toast.show({
@@ -54,6 +74,62 @@ export default function EditJournalEntryScreen() {
     }
   }
 
+  const handleMediaUpload = async (mediaId: string) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        quality: 1,
+      })
+
+      if (!result.canceled && entry) {
+        const media: MediaItem = {
+          type: 'upload' as const,
+          url: result.assets[0].uri,
+          name: 'Upload'
+        }
+        
+        setEntry({
+          ...entry,
+          media: {
+            ...entry.media,
+            [mediaId]: [...(entry.media[mediaId] || []), media]
+          }
+        })
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to upload media'
+      })
+    }
+  }
+
+  const handleLinkAdd = (mediaId: string) => {
+    if (!entry || !linkInput[mediaId]?.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Please enter a valid URL'
+      })
+      return
+    }
+
+    const media: MediaItem = {
+      type: 'link' as const,
+      url: linkInput[mediaId],
+      name: 'Link'
+    }
+    
+    setEntry({
+      ...entry,
+      media: {
+        ...entry.media,
+        [mediaId]: [...(entry.media[mediaId] || []), media]
+      }
+    })
+    setLinkInput(prev => ({ ...prev, [mediaId]: '' }))
+  }
+
   if (!entry) return null
 
   const config = entryTypeConfigs[entry.type]
@@ -78,7 +154,7 @@ export default function EditJournalEntryScreen() {
                 mode="outlined"
                 onPress={() => setShowTypeMenu(true)}
                 icon="filter-variant"
-                contentStyle={styles.typeButton}
+                style={styles.typeButton}
               >
                 {entryTypeConfigs[entry.type].label}
               </Button>
@@ -115,9 +191,12 @@ export default function EditJournalEntryScreen() {
             <DateTimePicker
               value={new Date(entry.date)}
               onChange={(event, date) => {
-                if (date) setEntry({ ...entry, date: date.toISOString() })
+                if (date && date <= new Date()) {
+                  setEntry({ ...entry, date: date.toISOString() })
+                }
               }}
               mode="date"
+              maximumDate={new Date()}
             />
           </View>
         </Surface>
@@ -175,6 +254,64 @@ export default function EditJournalEntryScreen() {
           </Surface>
         )}
 
+        {entry.type === EntryType.Film && config.filmDetails && (
+          <Surface style={styles.section}>
+            <Text variant="titleMedium" style={styles.sectionTitle}>Film Details</Text>
+            <Text style={styles.description}>{config.filmDetails.description}</Text>
+            <Menu
+              visible={showFilmTypeMenu}
+              onDismiss={() => setShowFilmTypeMenu(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowFilmTypeMenu(true)}
+                  style={styles.typeButton}
+                >
+                  {config.filmDetails.options.find(opt => opt.value === entry.filmDetails?.filmType)?.label || 'Select Film Type'}
+                </Button>
+              }
+            >
+              {config.filmDetails.options.map((option) => (
+                <Menu.Item
+                  key={option.value}
+                  onPress={() => {
+                    setEntry({
+                      ...entry,
+                      filmDetails: {
+                        ...entry.filmDetails,
+                        filmType: option.value,
+                        ...(option.value !== 'other' && { otherDescription: undefined })
+                      }
+                    })
+                    setShowFilmTypeMenu(false)
+                  }}
+                  title={option.label}
+                  titleStyle={[
+                    styles.menuItem,
+                    entry.filmDetails?.filmType === option.value && styles.selectedMenuItem
+                  ]}
+                />
+              ))}
+            </Menu>
+
+            {entry.filmDetails?.filmType === 'other' && (
+              <TextInput
+                label="Describe the film type"
+                value={entry.filmDetails?.otherDescription || ''}
+                onChangeText={(value) => setEntry({
+                  ...entry,
+                  filmDetails: {
+                    ...entry.filmDetails,
+                    otherDescription: value
+                  }
+                })}
+                style={[styles.input, { marginTop: 16 }]}
+                placeholder="E.g., Training videos, tutorials, etc."
+              />
+            )}
+          </Surface>
+        )}
+
         {config.metrics.length > 0 && (
           <Surface style={styles.section}>
             <Text variant="titleMedium" style={styles.sectionTitle}>Ratings</Text>
@@ -226,6 +363,75 @@ export default function EditJournalEntryScreen() {
             />
           </Surface>
         ))}
+
+        {config.media && config.media.length > 0 && (
+          <Surface style={styles.section}>
+            <Text variant="titleMedium" style={styles.sectionTitle}>Media</Text>
+            {config.media.map(mediaConfig => (
+              <View key={mediaConfig.id} style={styles.mediaSection}>
+                <View style={styles.mediaTitleRow}>
+                  <Text>{mediaConfig.label}</Text>
+                  {mediaConfig.required && (
+                    <Text style={styles.required}>*Required</Text>
+                  )}
+                </View>
+                <Text style={styles.description}>{mediaConfig.description}</Text>
+                
+                {entry.media[mediaConfig.id]?.map((item, index) => (
+                  <View key={index} style={styles.mediaItem}>
+                    {item.type === 'upload' ? (
+                      <Image source={{ uri: item.url }} style={styles.mediaPreview} />
+                    ) : (
+                      <Text style={styles.linkText}>{item.url}</Text>
+                    )}
+                    <IconButton 
+                      icon="delete" 
+                      onPress={() => {
+                        setEntry({
+                          ...entry,
+                          media: {
+                            ...entry.media,
+                            [mediaConfig.id]: entry.media[mediaConfig.id].filter((_, i) => i !== index)
+                          }
+                        })
+                      }}
+                    />
+                  </View>
+                ))}
+                
+                <View style={styles.mediaInputs}>
+                  <Button 
+                    mode="outlined"
+                    icon="upload"
+                    onPress={() => handleMediaUpload(mediaConfig.id)}
+                    style={styles.mediaButton}
+                  >
+                    Upload Media
+                  </Button>
+
+                  <View style={styles.linkInput}>
+                    <TextInput
+                      placeholder="Enter URL"
+                      value={linkInput[mediaConfig.id] || ''}
+                      onChangeText={(value) => 
+                        setLinkInput(prev => ({ ...prev, [mediaConfig.id]: value }))
+                      }
+                      style={styles.linkTextInput}
+                    />
+                    <Button 
+                      mode="outlined"
+                      icon="link"
+                      onPress={() => handleLinkAdd(mediaConfig.id)}
+                      style={styles.mediaButton}
+                    >
+                      Add Link
+                    </Button>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Surface>
+        )}
 
         <Button 
           mode="contained"
@@ -308,7 +514,8 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   typeButton: {
-    height: 36,
+    width: '100%',
+    marginTop: 8,
   },
   menuItem: {
     color: Colors.dark.text,
@@ -316,5 +523,60 @@ const styles = StyleSheet.create({
   selectedMenuItem: {
     color: Colors.dark.primary,
     fontWeight: 'bold',
+  },
+  mediaSection: {
+    marginBottom: 24,
+  },
+  mediaTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  required: {
+    color: Colors.dark.error,
+    marginLeft: 4,
+    fontSize: 14,
+  },
+  description: {
+    fontSize: 14,
+    color: Colors.dark.textSecondary,
+    marginBottom: 8,
+  },
+  mediaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  mediaPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  mediaInputs: {
+    gap: 8,
+  },
+  mediaButton: {
+    flex: 1,
+  },
+  linkInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  linkTextInput: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  linkText: {
+    flex: 1,
+    color: Colors.dark.primary,
+    textDecorationLine: 'underline',
+  },
+  cancelButton: {
+    marginRight: -8,
+  },
+  cancelButtonText: {
+    color: Colors.dark.primary,
   },
 }) 

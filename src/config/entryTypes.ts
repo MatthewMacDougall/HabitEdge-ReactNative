@@ -40,6 +40,11 @@ export interface MediaConfig {
   acceptedTypes?: string[];
 }
 
+export interface FilmDetails {
+  filmType: 'pros' | 'opponents' | 'team' | 'other';
+  otherDescription?: string;
+}
+
 export interface EntryTypeConfig {
   type: EntryType;
   label: string;
@@ -47,6 +52,14 @@ export interface EntryTypeConfig {
   metrics: Metric[];
   prompts: Prompt[];
   media: MediaConfig[];
+  filmDetails?: {
+    label: string;
+    description?: string;
+    options: Array<{
+      label: string;
+      value: FilmDetails['filmType'];
+    }>;
+  };
 }
 
 // Common metrics shared across all entry types
@@ -276,6 +289,16 @@ export const entryTypeConfigs: Record<EntryType, EntryTypeConfig> = {
   [EntryType.Film]: {
     type: EntryType.Film,
     label: 'Film Session',
+    filmDetails: {
+      label: 'Film Type',
+      description: 'What type of film session was this?',
+      options: [
+        { label: 'Own Team', value: 'team' },
+        { label: 'Opponents', value: 'opponents' },
+        { label: 'Pros', value: 'pros' },
+        { label: 'Other', value: 'other' }
+      ]
+    },
     metrics: [
       {
         id: 'overallRating',

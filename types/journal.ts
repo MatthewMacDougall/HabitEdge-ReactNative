@@ -20,6 +20,8 @@ export interface JournalEntry {
   media: Record<string, MediaItem[]>;
   /** Optional game-specific details */
   gameDetails?: GameDetails;
+  /** Optional film-specific details */
+  filmDetails?: FilmDetails;
   /** Creation timestamp */
   createdAt: string;
   /** Last modified timestamp */
@@ -61,6 +63,7 @@ export type EntryFormData = Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>
   prompts: Record<string, string>;
   media: Record<string, MediaItem[]>;
   gameDetails: GameDetails;
+  filmDetails?: FilmDetails;
 }
 
 // Then create a type guard or specific interface for game entries

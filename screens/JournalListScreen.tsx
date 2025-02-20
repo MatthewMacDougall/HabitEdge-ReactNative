@@ -406,4 +406,11 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  filmTypeContainer: {
+    marginTop: 8,
+  },
+  filmTypeLabel: {
+    color: Colors.dark.textSecondary,
+    fontSize: 14,
+  },
 });

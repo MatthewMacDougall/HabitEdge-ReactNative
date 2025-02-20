@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, ScrollView, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native'
-import { TextInput, SegmentedButtons, Text, Surface, Button, IconButton } from 'react-native-paper'
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
-import { EntryType, entryTypeConfigs } from '@/src/config/entryTypes'
+import { TextInput, SegmentedButtons, Text, Surface, Button, IconButton, Menu } from 'react-native-paper'
+import { useRouter, useFocusEffect } from 'expo-router'
+import { EntryType, entryTypeConfigs, FilmDetails } from '@/src/config/entryTypes'
 import { EntryFormData, GameScore } from '@/types/journal'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import Slider from '@react-native-community/slider'
@@ -13,6 +13,12 @@ import { SharedStyles } from '@/constants/Styles'
 import { Picker } from '@react-native-picker/picker'
 import * as ImagePicker from 'expo-image-picker'
 import { Image } from 'react-native'
+
+type MediaItemType = {
+  type: 'upload' | 'link'
+  url: string
+  name: string
+}
 
 const createEmptyEntry = (): EntryFormData => ({
   type: EntryType.Game,
@@ -25,46 +31,27 @@ const createEmptyEntry = (): EntryFormData => ({
     opponent: '',
     score: { yourTeam: '0', opponent: '0' },
     result: 'draw'
-  }
+  },
+  filmDetails: undefined
 })
 
 export default function JournalEntryScreen() {
   const router = useRouter()
-  const { id } = useLocalSearchParams()
   const [entry, setEntry] = useState<EntryFormData>(createEmptyEntry())
   const config = entryTypeConfigs[entry.type]
   const [linkInput, setLinkInput] = useState<Record<string, string>>({})
+  const [showTypeMenu, setShowTypeMenu] = useState(false)
+  const [showFilmTypeMenu, setShowFilmTypeMenu] = useState(false)
 
-  // Reset form when screen is focused
+  // Simplify to just reset form when screen is focused
   useFocusEffect(
     useCallback(() => {
-      if (!id || id === 'new') {
-        setEntry(createEmptyEntry())
-      } else {
-        loadExistingEntry()
-      }
-
-      // Reset form when screen loses focus
+      setEntry(createEmptyEntry())
       return () => {
         setEntry(createEmptyEntry())
       }
-    }, [id])
+    }, [])
   )
-
-  const loadExistingEntry = async () => {
-    try {
-      const existingEntry = await loadJournalEntry(Number(id))
-      if (existingEntry) {
-        setEntry(existingEntry)
-      }
-    } catch (error) {
-      Toast.show({
-        type: 'error',
-        text1: 'Failed to load entry'
-      })
-      setEntry(createEmptyEntry())
-    }
-  }
 
   const handleMetricChange = (metricId: string, value: number) => {
     setEntry(prev => ({
@@ -129,12 +116,7 @@ export default function JournalEntryScreen() {
         return
       }
 
-      if (id && id !== 'new') {
-        await updateJournalEntry(Number(id), entry)
-      } else {
-        await addJournalEntry(entry)
-      }
-      
+      await addJournalEntry(entry)
       Toast.show({
         type: 'success',
         text1: 'Entry saved successfully'
@@ -159,8 +141,8 @@ export default function JournalEntryScreen() {
       })
 
       if (!result.canceled) {
-        const media = {
-          type: 'upload',
+        const media: MediaItemType = {
+          type: 'upload' as const,
           url: result.assets[0].uri,
           name: 'Upload'
         }
@@ -190,8 +172,8 @@ export default function JournalEntryScreen() {
       return
     }
 
-    const media = {
-      type: 'link',
+    const media: MediaItemType = {
+      type: 'link' as const,
       url: linkInput[mediaId],
       name: 'Link'
     }
@@ -210,7 +192,7 @@ export default function JournalEntryScreen() {
     <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
     >
       <ScrollView 
         style={styles.scrollView}
@@ -218,22 +200,72 @@ export default function JournalEntryScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={true}
       >
-        <Surface style={[styles.section, styles.pickerSection]}>
+        <Surface style={[styles.section, styles.typeSection]}>
           <Text variant="titleMedium" style={styles.sectionTitle}>Entry Type</Text>
-          <Picker
-            selectedValue={entry.type}
-            onValueChange={(value: EntryType) => setEntry({...entry, type: value})}
-            style={styles.picker}
-            itemStyle={styles.pickerItem}
+          <Menu
+            visible={showTypeMenu}
+            onDismiss={() => setShowTypeMenu(false)}
+            anchor={
+              <Button
+                mode="outlined"
+                onPress={() => setShowTypeMenu(true)}
+                icon="filter-variant"
+                style={styles.typeButton}
+              >
+                {entryTypeConfigs[entry.type].label}
+              </Button>
+            }
           >
-            {Object.values(EntryType).map(type => (
-              <Picker.Item 
+            {Object.entries(entryTypeConfigs).map(([type, config]) => (
+              <Menu.Item
                 key={type}
-                label={entryTypeConfigs[type].label} 
-                value={type}
+                onPress={() => {
+                  const newType = type as EntryType
+                  setEntry(prev => ({
+                    ...prev,
+                    type: newType,
+                    filmDetails: newType === EntryType.Film ? {
+                      filmType: 'team' as const
+                    } : undefined,
+                    gameDetails: {
+                      opponent: '',
+                      score: { yourTeam: '0', opponent: '0' },
+                      result: 'draw'
+                    }
+                  }))
+                  setShowTypeMenu(false)
+                }}
+                title={config.label}
+                titleStyle={[
+                  styles.menuItem,
+                  entry.type === type && styles.selectedMenuItem
+                ]}
               />
             ))}
-          </Picker>
+          </Menu>
+        </Surface>
+
+        <Surface style={styles.section}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>Basic Info</Text>
+          <TextInput
+            label="Title"
+            value={entry.title}
+            onChangeText={(value) => setEntry(prev => ({ ...prev, title: value }))}
+            style={styles.input}
+          />
+          <View style={styles.dateContainer}>
+            <Text>Date: </Text>
+            <DateTimePicker
+              value={new Date(entry.date)}
+              onChange={(event, date) => {
+                if (date && date <= new Date()) {
+                  setEntry({ ...entry, date: date.toISOString() })
+                }
+              }}
+              mode="date"
+              maximumDate={new Date()}
+            />
+          </View>
         </Surface>
 
         {entry.type === EntryType.Game && (
@@ -299,6 +331,66 @@ export default function JournalEntryScreen() {
                 }
               ]}
             />
+          </Surface>
+        )}
+
+        {entry.type === EntryType.Film && config.filmDetails && (
+          <Surface style={styles.section}>
+            <Text variant="titleMedium" style={styles.sectionTitle}>Film Details</Text>
+            <Text style={styles.description}>{config.filmDetails.description}</Text>
+            <Menu
+              visible={showFilmTypeMenu}
+              onDismiss={() => setShowFilmTypeMenu(false)}
+              anchor={
+                <Button
+                  mode="outlined"
+                  onPress={() => setShowFilmTypeMenu(true)}
+                  style={styles.typeButton}
+                  labelStyle={styles.buttonText}
+                >
+                  {config.filmDetails.options.find(
+                    opt => opt.value === entry.filmDetails?.filmType
+                  )?.label || 'Select Film Type'}
+                </Button>
+              }
+            >
+              {config.filmDetails.options.map((option) => (
+                <Menu.Item
+                  key={option.value}
+                  onPress={() => {
+                    setEntry(prev => ({
+                      ...prev,
+                      filmDetails: {
+                        filmType: option.value,
+                        ...(option.value === 'other' ? { otherDescription: '' } : {})
+                      }
+                    }))
+                    setShowFilmTypeMenu(false)
+                  }}
+                  title={option.label}
+                  titleStyle={[
+                    styles.menuItem,
+                    entry.filmDetails?.filmType === option.value && styles.selectedMenuItem
+                  ]}
+                />
+              ))}
+            </Menu>
+
+            {entry.filmDetails?.filmType === 'other' && (
+              <TextInput
+                label="Describe the film type"
+                value={entry.filmDetails?.otherDescription || ''}
+                onChangeText={(value) => setEntry(prev => ({
+                  ...prev,
+                  filmDetails: {
+                    ...prev.filmDetails,
+                    otherDescription: value
+                  }
+                }))}
+                style={[styles.input, { marginTop: 16 }]}
+                placeholder="E.g., Training videos, tutorials, etc."
+              />
+            )}
           </Surface>
         )}
 
@@ -591,6 +683,30 @@ const styles = StyleSheet.create({
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  typeSection: {
+    marginBottom: 16,
+  },
+  typeButton: {
+    width: '100%',
+    marginTop: 8,
+  },
+  buttonText: {
+    textAlign: 'center',
+  },
+  menuItem: {
+    color: Colors.dark.text,
+    textAlign: 'left',
+  },
+  selectedMenuItem: {
+    color: Colors.dark.primary,
+    fontWeight: 'bold',
+    textAlign: 'left',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
   },
 })
 

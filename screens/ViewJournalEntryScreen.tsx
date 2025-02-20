@@ -92,6 +92,26 @@ export default function ViewJournalEntryScreen() {
         )
       })}
 
+      {entry.type === 'film' && entry.filmDetails && (
+        <Surface style={styles.section}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>Film Details</Text>
+          <View style={styles.filmDetails}>
+            <Text style={styles.label}>Film Type</Text>
+            <Text style={styles.value}>
+              {config.filmDetails?.options.find(
+                opt => opt.value === entry.filmDetails?.filmType
+              )?.label || 'Not specified'}
+            </Text>
+            {entry.filmDetails.filmType === 'other' && entry.filmDetails.otherDescription && (
+              <>
+                <Text style={styles.label}>Description</Text>
+                <Text style={styles.value}>{entry.filmDetails.otherDescription}</Text>
+              </>
+            )}
+          </View>
+        </Surface>
+      )}
+
       <View style={styles.buttonContainer}>
         <Button 
           mode="contained"
@@ -162,12 +182,11 @@ const styles = StyleSheet.create({
   },
   label: {
     color: Colors.dark.textSecondary,
-    fontSize: 14,
+    marginTop: 8,
   },
   value: {
     color: Colors.dark.text,
-    fontSize: 16,
-    fontWeight: '500',
+    marginTop: 4,
   },
   result: {
     color: Colors.dark.primary,
@@ -208,5 +227,8 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginBottom: 32,
+  },
+  filmDetails: {
+    gap: 4,
   },
 }) 
