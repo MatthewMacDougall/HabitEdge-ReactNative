@@ -1,4 +1,4 @@
-import { EntryType } from '@/src/config/entryTypes'
+import { EntryType, FilmDetails } from '@/src/config/entryTypes'
 
 /**
  * Represents a journal entry for tracking training sessions
@@ -55,16 +55,16 @@ export interface MediaItem {
 /**
  * Form data for creating/editing entries
  */
-export type EntryFormData = Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'> & {
+export type EntryFormData = {
   type: EntryType;
   date: string;
   title: string;
   metrics: Record<string, number>;
   prompts: Record<string, string>;
   media: Record<string, MediaItem[]>;
-  gameDetails: GameDetails;
+  gameDetails: GameDetails | null;
   filmDetails?: FilmDetails;
-}
+};
 
 // Then create a type guard or specific interface for game entries
 export interface GameEntryFormData extends EntryFormData {
