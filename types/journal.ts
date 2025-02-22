@@ -40,9 +40,9 @@ export interface GameScore {
  * Game details
  */
 export interface GameDetails {
-  opponent: string;
-  result: 'win' | 'loss' | 'draw';
-  score: GameScore;
+  opponent?: string;
+  result?: 'win' | 'loss' | 'draw';
+  score?: GameScore;
 }
 
 export interface MediaItem {

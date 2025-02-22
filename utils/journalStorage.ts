@@ -79,12 +79,17 @@ export const addJournalEntry = async (entry: EntryFormData): Promise<JournalEntr
 /**
  * Update an existing journal entry
  */
-export const updateJournalEntry = async (id: number, updates: Partial<JournalEntry>): Promise<void> => {
+export const updateJournalEntry = async (id: number, updates: EntryFormData): Promise<void> => {
   try {
     const entries = await loadJournalEntries();
     const updatedEntries = entries.map(entry => 
       entry.id === id 
-        ? { ...entry, ...updates, updatedAt: new Date().toISOString() }
+        ? { 
+            ...entry, 
+            ...updates,
+            gameDetails: updates.gameDetails || undefined,
+            updatedAt: new Date().toISOString() 
+          }
         : entry
     );
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries));

@@ -41,7 +41,7 @@ export interface MediaConfig {
 }
 
 export interface FilmDetails {
-  filmType: 'pros' | 'opponents' | 'team' | 'other';
+  filmType?: 'pros' | 'opponents' | 'team' | 'other';
   otherDescription?: string;
 }
 

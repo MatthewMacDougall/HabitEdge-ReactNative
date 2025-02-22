@@ -134,6 +134,19 @@ export default function EditJournalEntryScreen() {
 
   const config = entryTypeConfigs[entry.type]
 
+  const updateScore = (value: string, field: 'yourTeam' | 'opponent') => {
+    setEntry({
+      ...entry,
+      gameDetails: {
+        ...entry.gameDetails,
+        score: {
+          yourTeam: field === 'yourTeam' ? value : (entry.gameDetails?.score?.yourTeam || '0'),
+          opponent: field === 'opponent' ? value : (entry.gameDetails?.score?.opponent || '0')
+        }
+      }
+    });
+  };
+
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -220,16 +233,7 @@ export default function EditJournalEntryScreen() {
               <TextInput
                 label="Your Score"
                 value={entry.gameDetails?.score?.yourTeam || '0'}
-                onChangeText={(value) => setEntry({
-                  ...entry,
-                  gameDetails: {
-                    ...entry.gameDetails,
-                    score: {
-                      ...entry.gameDetails?.score,
-                      yourTeam: value,
-                    }
-                  }
-                })}
+                onChangeText={(value) => updateScore(value, 'yourTeam')}
                 keyboardType="numeric"
                 style={[styles.input, styles.scoreInput]}
               />
@@ -237,16 +241,7 @@ export default function EditJournalEntryScreen() {
               <TextInput
                 label="Opponent Score"
                 value={entry.gameDetails?.score?.opponent || '0'}
-                onChangeText={(value) => setEntry({
-                  ...entry,
-                  gameDetails: {
-                    ...entry.gameDetails,
-                    score: {
-                      ...entry.gameDetails?.score,
-                      opponent: value,
-                    }
-                  }
-                })}
+                onChangeText={(value) => updateScore(value, 'opponent')}
                 keyboardType="numeric"
                 style={[styles.input, styles.scoreInput]}
               />

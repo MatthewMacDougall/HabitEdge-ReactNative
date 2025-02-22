@@ -124,7 +124,7 @@ export default function JournalEntryScreen() {
         metrics: metricsWithDefaults,
         prompts: entry.prompts || {},
         media: entry.media || {},
-        gameDetails: entry.type === EntryType.Game ? entry.gameDetails : undefined,
+        gameDetails: entry.type === EntryType.Game ? entry.gameDetails : null,
         filmDetails: entry.type === EntryType.Film ? entry.filmDetails : undefined
       };
 
