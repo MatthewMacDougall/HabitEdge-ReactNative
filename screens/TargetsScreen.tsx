@@ -231,14 +231,18 @@ export default function TargetsScreen() {
 
     try {
       const now = new Date().toISOString();
+      let updatedTargets = [...targets];
 
       if (selectedTarget.type === 'boolean') {
-        const updatedTargets = targets.map(target => {
+        updatedTargets = targets.map(target => {
           if (target.id === selectedTarget.id) {
+            // Only reset priority if this target was the priority
+            const shouldResetPriority = target.isPriority;
             return {
               ...target,
               completed: true,
               completedAt: now,
+              isPriority: shouldResetPriority ? false : target.isPriority,
               progress: [{
                 id: Date.now(),
                 value: 1,
@@ -249,43 +253,56 @@ export default function TargetsScreen() {
           }
           return target;
         });
-
-        await saveTargets(updatedTargets);
-        setTargets(updatedTargets);
       } else {
-        const progress = {
-          id: editingProgress?.id || Date.now(),
-          value: parseFloat(progressUpdate),
-          note: progressNote,
-          timestamp: progressDate
-        };
-
-        const updatedTargets = targets.map(target => {
+        updatedTargets = targets.map(target => {
           if (target.id === selectedTarget.id) {
-            const updatedProgress = isEditMode 
+            const progress = {
+              id: Date.now(),
+              value: Number(progressUpdate),
+              note: progressNote,
+              timestamp: progressDate
+            };
+            
+            const newProgress = isEditMode 
               ? target.progress.map(p => p.id === editingProgress?.id ? progress : p)
               : [...target.progress, progress];
             
-            const newTotal = updatedProgress.reduce((sum, p) => sum + p.value, 0);
+            const newTotal = newProgress.reduce((sum, p) => sum + p.value, 0);
             const isNowCompleted = newTotal >= (target.target || 0);
             const wasCompletedBefore = target.completed;
+            
+            // Only reset priority if this target was the priority and is now completed
+            const shouldResetPriority = target.isPriority && isNowCompleted;
 
             return {
               ...target,
-              progress: updatedProgress,
+              progress: newProgress,
               completed: isNowCompleted,
-              completedAt: isNowCompleted && !wasCompletedBefore 
-                ? now 
-                : target.completedAt
+              completedAt: isNowCompleted && !wasCompletedBefore ? now : target.completedAt,
+              isPriority: shouldResetPriority ? false : target.isPriority
             };
           }
           return target;
         });
-
-        await saveTargets(updatedTargets);
-        setTargets(updatedTargets);
       }
-      
+
+      // Only show next deadline toast if we just completed the priority target
+      if (selectedTarget.isPriority && !selectedTarget.completed) {
+        const nextDeadline = updatedTargets
+          .filter(t => !t.completed && !t.isPriority)
+          .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())[0];
+
+        if (nextDeadline) {
+          Toast.show({
+            type: 'info',
+            text1: 'Next Deadline',
+            text2: `${nextDeadline.title} due on ${format(new Date(nextDeadline.deadline), 'MMM d, yyyy')}`
+          });
+        }
+      }
+
+      await saveTargets(updatedTargets);
+      setTargets(updatedTargets);
       // Reset form
       setProgressUpdate('');
       setProgressNote('');
