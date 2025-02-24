@@ -320,27 +320,27 @@ export default function JournalEntryScreen() {
             <SegmentedButtons
               value={entry.gameDetails?.result || 'draw'}
               onValueChange={(value) => handleGameDetailsChange('result', value)}
-              style={styles.resultButtons}
+              style={[styles.resultButtons]}
               buttons={[
                 { 
                   value: 'win',
                   label: 'Win',
-                  style: [styles.resultButton],
-                  checkedColor: Colors.dark.background,
+                  showSelectedCheck: false,
+                  checkedColor: Colors.dark.text,
                   uncheckedColor: Colors.dark.primary
                 },
                 { 
                   value: 'loss',
                   label: 'Loss',
-                  style: [styles.resultButton],
-                  checkedColor: Colors.dark.background,
+                  showSelectedCheck: false,
+                  checkedColor: Colors.dark.text,
                   uncheckedColor: Colors.dark.primary
                 },
                 { 
                   value: 'draw',
                   label: 'Draw',
-                  style: [styles.resultButton],
-                  checkedColor: Colors.dark.background,
+                  showSelectedCheck: false,
+                  checkedColor: Colors.dark.text,
                   uncheckedColor: Colors.dark.primary
                 }
               ]}
@@ -633,22 +633,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
   },
-  resultButton: {
-    borderColor: Colors.dark.primary,
-  },
-  selectedResult: {
-    backgroundColor: Colors.dark.primary,
-  },
-  resultText: {
-    color: Colors.dark.primary,
-    fontSize: 16,
-  },
-  selectedResultText: {
-    color: Colors.dark.background,
-    fontWeight: 'bold',
-  },
   resultButtons: {
-    // Add any specific styles for the result buttons if needed
+    marginVertical: 8, // If you want some spacing
   },
   mediaSection: {
     marginBottom: 24,
