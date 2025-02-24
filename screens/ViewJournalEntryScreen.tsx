@@ -51,11 +51,11 @@ export default function ViewJournalEntryScreen() {
             <Text style={styles.value}>{entry.gameDetails.opponent}</Text>
             <Text style={styles.label}>Score</Text>
             <Text style={styles.value}>
-              {entry.gameDetails.score.yourTeam} - {entry.gameDetails.score.opponent}
+              {entry.gameDetails?.score?.yourTeam} - {entry.gameDetails?.score?.opponent}
             </Text>
             <Text style={styles.label}>Result</Text>
             <Text style={[styles.value, styles.result]}>
-              {entry.gameDetails.result.toUpperCase()}
+              {entry.gameDetails?.result?.toUpperCase()}
             </Text>
           </View>
         </Surface>

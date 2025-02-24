@@ -57,22 +57,32 @@ export default function EditJournalEntryScreen() {
   }
 
   const handleSubmit = async () => {
-    if (!entry) return
+    if (!entry) return;
 
     try {
-      await updateJournalEntry(Number(id), entry)
+      const errors = validateEntry(entry, config);
+      if (errors.length > 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Please fill in all required fields',
+          text2: errors[0]
+        });
+        return;
+      }
+
+      await updateJournalEntry(Number(id), entry);
       Toast.show({
         type: 'success',
         text1: 'Entry updated successfully'
-      })
-      router.back()
+      });
+      router.back();
     } catch (error) {
       Toast.show({
         type: 'error',
         text1: 'Failed to update entry'
-      })
+      });
     }
-  }
+  };
 
   const handleMediaUpload = async (mediaId: string) => {
     try {
@@ -134,17 +144,63 @@ export default function EditJournalEntryScreen() {
 
   const config = entryTypeConfigs[entry.type]
 
-  const updateScore = (value: string, field: 'yourTeam' | 'opponent') => {
+  const handleGameResultChange = (result: 'win' | 'loss' | 'draw') => {
     setEntry({
       ...entry,
       gameDetails: {
         ...entry.gameDetails,
-        score: {
-          yourTeam: field === 'yourTeam' ? value : (entry.gameDetails?.score?.yourTeam || '0'),
-          opponent: field === 'opponent' ? value : (entry.gameDetails?.score?.opponent || '0')
-        }
+        result
       }
     });
+  };
+
+  const determineGameResult = (yourScore: string, opponentScore: string): 'win' | 'loss' | 'draw' => {
+    const yourScoreNum = parseInt(yourScore);
+    const opponentScoreNum = parseInt(opponentScore);
+    
+    if (yourScoreNum > opponentScoreNum) return 'win';
+    if (yourScoreNum < opponentScoreNum) return 'loss';
+    return 'draw';
+  };
+
+  const handleScoreChange = (value: string, field: 'yourTeam' | 'opponent') => {
+    const cleanValue = value.replace(/^0+/, '').replace(/[^0-9]/g, '');
+    
+    const newScore = {
+      yourTeam: field === 'yourTeam' ? (cleanValue || '0') : (entry.gameDetails?.score?.yourTeam || '0'),
+      opponent: field === 'opponent' ? (cleanValue || '0') : (entry.gameDetails?.score?.opponent || '0')
+    };
+
+    setEntry({
+      ...entry,
+      gameDetails: {
+        ...entry.gameDetails,
+        score: newScore,
+        result: determineGameResult(newScore.yourTeam, newScore.opponent)
+      }
+    });
+  };
+
+  const validateEntry = (entry: EntryFormData, config: any) => {
+    const errors: string[] = [];
+
+    if (!entry.title.trim()) {
+      errors.push('Title is required');
+    }
+
+    if (entry.type === 'game' && !entry.gameDetails?.opponent) {
+      errors.push('Opponent name is required');
+    }
+
+    const missingPrompts = config.prompts
+      .filter((prompt: any) => prompt.required && !entry.prompts[prompt.id]?.trim())
+      .map((prompt: any) => prompt.label);
+
+    if (missingPrompts.length > 0) {
+      errors.push(`Required prompts missing: ${missingPrompts.join(', ')}`);
+    }
+
+    return errors;
   };
 
   return (
@@ -233,7 +289,7 @@ export default function EditJournalEntryScreen() {
               <TextInput
                 label="Your Score"
                 value={entry.gameDetails?.score?.yourTeam || '0'}
-                onChangeText={(value) => updateScore(value, 'yourTeam')}
+                onChangeText={(value) => handleScoreChange(value, 'yourTeam')}
                 keyboardType="numeric"
                 style={[styles.input, styles.scoreInput]}
               />
@@ -241,11 +297,39 @@ export default function EditJournalEntryScreen() {
               <TextInput
                 label="Opponent Score"
                 value={entry.gameDetails?.score?.opponent || '0'}
-                onChangeText={(value) => updateScore(value, 'opponent')}
+                onChangeText={(value) => handleScoreChange(value, 'opponent')}
                 keyboardType="numeric"
                 style={[styles.input, styles.scoreInput]}
               />
             </View>
+            <SegmentedButtons
+              value={entry.gameDetails?.result || 'draw'}
+              onValueChange={(value) => handleGameResultChange(value as 'win' | 'loss' | 'draw')}
+              style={styles.resultButtons}
+              buttons={[
+                { 
+                  value: 'win',
+                  label: 'Win',
+                  showSelectedCheck: false,
+                  checkedColor: Colors.dark.text,
+                  uncheckedColor: Colors.dark.primary
+                },
+                { 
+                  value: 'loss',
+                  label: 'Loss',
+                  showSelectedCheck: false,
+                  checkedColor: Colors.dark.text,
+                  uncheckedColor: Colors.dark.primary
+                },
+                { 
+                  value: 'draw',
+                  label: 'Draw',
+                  showSelectedCheck: false,
+                  checkedColor: Colors.dark.text,
+                  uncheckedColor: Colors.dark.primary
+                }
+              ]}
+            />
           </Surface>
         )}
 
@@ -341,7 +425,12 @@ export default function EditJournalEntryScreen() {
 
         {config.prompts.map(prompt => (
           <Surface key={prompt.id} style={styles.section}>
-            <Text variant="titleMedium" style={styles.sectionTitle}>{prompt.label}</Text>
+            <View style={styles.promptHeader}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                {prompt.label}
+                {prompt.required && <Text style={styles.requiredStar}> *</Text>}
+              </Text>
+            </View>
             <TextInput
               multiline
               numberOfLines={4}
@@ -354,7 +443,11 @@ export default function EditJournalEntryScreen() {
                 }
               })}
               placeholder={prompt.placeholder}
-              style={[styles.input, styles.multilineInput]}
+              style={[
+                styles.input, 
+                styles.multilineInput,
+                prompt.required && !entry.prompts[prompt.id]?.trim() && styles.requiredInput
+              ]}
             />
           </Surface>
         ))}
@@ -573,5 +666,21 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: Colors.dark.primary,
+  },
+  resultButtons: {
+    marginTop: 16,
+  },
+  promptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  requiredStar: {
+    color: Colors.dark.error,
+    fontSize: 18,
+  },
+  requiredInput: {
+    borderColor: Colors.dark.error,
+    borderWidth: 1,
   },
 }) 
