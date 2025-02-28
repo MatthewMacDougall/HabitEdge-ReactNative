@@ -7,7 +7,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
-  Alert
+  Alert,
+  GestureResponderEvent
 } from 'react-native'
 import {
   Text,
@@ -338,7 +339,9 @@ export default function TargetsScreen() {
       progress: [],
       deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
       completed: false
-    })
+    });
+    setShowDatePicker(false);
+    setIsEditMode(false);
   }
 
   /**
@@ -450,13 +453,17 @@ export default function TargetsScreen() {
    * 
    * @param target Target to edit
    */
-  const handleEditTarget = (target: Target) => {
-    setNewTarget({
-      ...target,
-      deadline: target.deadline
-    });
-    setIsEditMode(true);
-    setShowModal(true);
+  const handleEditTarget = (targetOrEvent: Target | GestureResponderEvent) => {
+    if ('nativeEvent' in targetOrEvent) {
+      if (!selectedTarget) return;
+      handleUpdateTarget();
+    } else {
+      const target = targetOrEvent;
+      setSelectedTarget(target);
+      setNewTarget({...target});
+      setIsEditMode(true);
+      setShowModal(true);
+    }
   }
 
   /**
@@ -737,156 +744,200 @@ export default function TargetsScreen() {
         <Modal
           visible={showModal}
           onDismiss={() => {
-            setShowModal(false)
-            setIsEditMode(false)
-            resetNewTarget()
+            setShowModal(false);
+            resetNewTarget();
+            setShowDatePicker(false);
           }}
-          contentContainerStyle={[
-            styles.modal, 
-            { 
-              backgroundColor: colors.card,
-              borderTopColor: colors.border 
-            }
-          ]}
+          contentContainerStyle={styles.modalContainer}
         >
-          <ScrollView>
-            <Text 
-              variant="titleLarge" 
-              style={[styles.modalTitle, { color: colors.text }]}
-            >
-              {isEditMode ? 'Edit Target' : 'Add Target'}
-            </Text>
-            <TextInput
-              label="Title"
-              value={newTarget.title || ''}
-              onChangeText={(value) => setNewTarget(prev => ({ ...prev, title: value }))}
-              style={[styles.input, { backgroundColor: colors.input }]}
-              textColor={colors.text}
-            />
-
-            <SegmentedButtons
-              value={newTarget.type || 'numeric'}
-              onValueChange={(value) => 
-                setNewTarget({ ...newTarget, type: value as 'numeric' | 'boolean' })
-              }
-              buttons={[
-                { value: 'numeric', label: 'Progress Target' },
-                { value: 'boolean', label: 'Milestone' }
-              ]}
-              style={styles.typeButtons}
-            />
-
-            {newTarget.type === 'numeric' && (
-              <View style={styles.row}>
-                <TextInput
-                  label="Target"
-                  keyboardType="numeric"
-                  value={String(newTarget.target || '')}
-                  onChangeText={(value) => 
-                    setNewTarget({ ...newTarget, target: Number(value) })
-                  }
-                  style={[styles.input, styles.flex1]}
-                />
-                <TextInput
-                  label="Unit"
-                  value={newTarget.unit || ''}
-                  onChangeText={(value) => setNewTarget({ ...newTarget, unit: value })}
-                  placeholder="goals, points, etc."
-                  style={[styles.input, styles.flex1]}
-                />
-              </View>
-            )}
-
-            <TouchableOpacity 
-              onPress={() => setShowDatePicker(true)}
-            >
-              <TextInput
-                label="Deadline"
-                value={format(new Date(newTarget.deadline!), 'MMM d, yyyy')}
-                editable={false}
-                right={<TextInput.Icon 
-                  icon="calendar" 
-                  onPress={() => setShowDatePicker(true)}
-                />}
-                style={styles.input}
-              />
-            </TouchableOpacity>
-
-            {showDatePicker && (
-              <DateTimePicker
-                value={new Date(newTarget.deadline!)}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                onChange={(event, date) => {
-                  setShowDatePicker(false);
-                  if (date && event.type !== 'dismissed') {
-                    const selectedDate = new Date(date);
-                    selectedDate.setHours(23, 59, 59, 999);
-                    setNewTarget(prev => ({ 
-                      ...prev, 
-                      deadline: selectedDate.toISOString() 
-                    }));
-                  }
+          <Surface style={styles.modal}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text variant="titleMedium" style={[styles.modalTitle, { color: colors.text }]}>
+                {isEditMode ? 'Edit Target' : 'Add Target'}
+              </Text>
+              <IconButton
+                icon="close"
+                size={20}
+                onPress={() => {
+                  setShowModal(false);
+                  resetNewTarget();
                 }}
-                minimumDate={new Date()}
               />
-            )}
+            </View>
+            
+            <ScrollView style={styles.modalScroll}>
+              <TextInput
+                label="Title"
+                value={newTarget.title || ''}
+                onChangeText={(text) => setNewTarget({ ...newTarget, title: text })}
+                style={[styles.input, { backgroundColor: colors.input }]}
+                textColor={colors.text}
+              />
 
-            <TextInput
-              label="Course of Action (Optional)"
-              placeholder="What's your plan to achieve this target?"
-              value={newTarget.plan || ''}
-              onChangeText={(value) => setNewTarget(prev => ({ ...prev, plan: value }))}
-              multiline
-              numberOfLines={4}
-              style={[styles.input, styles.textArea]}
-            />
+              <Text variant="titleSmall" style={[styles.modalSubtitle, { color: colors.text }]}>
+                Target Type
+              </Text>
+              
+              <SegmentedButtons
+                value={newTarget.type || 'numeric'}
+                onValueChange={(value) => setNewTarget({ 
+                  ...newTarget, 
+                  type: value as 'numeric' | 'boolean' 
+                })}
+                style={styles.typeButtons}
+                buttons={[
+                  { value: 'numeric', label: 'Numeric' },
+                  { value: 'boolean', label: 'Milestone' }
+                ]}
+              />
 
-            <View style={styles.modalButtons}>
-              {isEditMode ? (
-                <View style={styles.editButtons}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      setShowModal(false);
-                      setIsEditMode(false);
-                      resetNewTarget();
+              {newTarget.type === 'numeric' && (
+                <View style={styles.row}>
+                  <TextInput
+                    label="Target Value"
+                    value={newTarget.target?.toString() || ''}
+                    onChangeText={(text) => {
+                      const numValue = text.trim() === '' ? undefined : Number(text);
+                      setNewTarget({ ...newTarget, target: numValue });
                     }}
-                    style={styles.modalButton}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleUpdateTarget}
-                    style={styles.modalButton}
-                  >
-                    Update
-                  </Button>
+                    keyboardType="numeric"
+                    style={[styles.input, styles.flex1]}
+                    textColor={colors.text}
+                  />
+                  
+                  <TextInput
+                    label="Unit (optional)"
+                    value={newTarget.unit || ''}
+                    onChangeText={(text) => setNewTarget({ ...newTarget, unit: text })}
+                    style={[styles.input, styles.flex1]}
+                    textColor={colors.text}
+                  />
                 </View>
-              ) : (
-                <View style={styles.centerButtons}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      setShowModal(false);
-                      resetNewTarget();
+              )}
+
+              <Text variant="titleSmall" style={[styles.modalSubtitle, { color: colors.text }]}>
+                Deadline
+              </Text>
+              
+              <Button
+                mode="outlined"
+                onPress={() => setShowDatePicker(true)}
+                style={styles.dateButton}
+              >
+                {newTarget.deadline
+                  ? format(new Date(newTarget.deadline), 'MMMM d, yyyy')
+                  : 'Select a deadline'}
+              </Button>
+              
+              {showDatePicker && Platform.OS === 'ios' && (
+                <View style={styles.datePickerContainer}>
+                  <DateTimePicker
+                    value={new Date(newTarget.deadline!)}
+                    mode="date"
+                    display="inline"
+                    onChange={(event, date) => {
+                      if (date && event.type !== 'dismissed') {
+                        const selectedDate = new Date(date);
+                        selectedDate.setHours(23, 59, 59, 999);
+                        setNewTarget(prev => ({ 
+                          ...prev, 
+                          deadline: selectedDate.toISOString() 
+                        }));
+                      }
                     }}
-                    style={styles.modalButton}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
+                    minimumDate={new Date()}
+                  />
+                  <Button 
                     mode="contained"
-                    onPress={handleAddTarget}
-                    style={styles.modalButton}
+                    onPress={() => setShowDatePicker(false)}
+                    style={styles.datePickerDoneButton}
                   >
-                    Add Target
+                    Done
                   </Button>
                 </View>
               )}
+              
+              {showDatePicker && Platform.OS === 'android' && (
+                <DateTimePicker
+                  value={new Date(newTarget.deadline!)}
+                  mode="date"
+                  display="default"
+                  onChange={(event, date) => {
+                    setShowDatePicker(false);
+                    if (date && event.type !== 'dismissed') {
+                      const selectedDate = new Date(date);
+                      selectedDate.setHours(23, 59, 59, 999);
+                      setNewTarget(prev => ({ 
+                        ...prev, 
+                        deadline: selectedDate.toISOString() 
+                      }));
+                    }
+                  }}
+                  minimumDate={new Date()}
+                />
+              )}
+              
+              <Text variant="titleSmall" style={[styles.modalSubtitle, { color: colors.text }]}>
+                Course of Action (Optional)
+              </Text>
+              
+              <TextInput
+                placeholder="What's your plan to achieve this target?"
+                value={newTarget.plan || ''}
+                onChangeText={(text) => setNewTarget({ ...newTarget, plan: text })}
+                multiline
+                numberOfLines={4}
+                style={[styles.input, styles.textArea]}
+                textColor={colors.text}
+              />
+              
+              {isEditMode && (
+                <Button
+                  mode="outlined"
+                  icon={newTarget.isPriority ? "star" : "star-outline"}
+                  onPress={() => setNewTarget({ 
+                    ...newTarget, 
+                    isPriority: !newTarget.isPriority 
+                  })}
+                  style={styles.priorityButton}
+                >
+                  {newTarget.isPriority ? "Remove Priority" : "Mark as Priority"}
+                </Button>
+              )}
+              
+              {isEditMode && (
+                <Button
+                  mode="outlined"
+                  icon="delete"
+                  onPress={() => setShowDeleteConfirm(true)}
+                  style={[styles.deleteButton, { borderColor: colors.error }]}
+                  textColor={colors.error}
+                >
+                  Delete Target
+                </Button>
+              )}
+            </ScrollView>
+            
+            <View style={[styles.submitButtonContainer, { borderTopColor: colors.border }]}>
+              {isEditMode ? (
+                <Button
+                  mode="contained"
+                  onPress={handleEditTarget}
+                  style={styles.submitButton}
+                >
+                  Update Target
+                </Button>
+              ) : (
+                <Button
+                  mode="contained"
+                  onPress={handleAddTarget}
+                  style={styles.submitButton}
+                >
+                  Add Target
+                </Button>
+              )}
             </View>
-          </ScrollView>
+          </Surface>
         </Modal>
 
         <Modal
@@ -1186,37 +1237,64 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
   },
-  modal: {
+  modalContainer: {
     margin: 20,
-    borderRadius: 12,
     width: '90%',
-    maxWidth: 350,
+    maxWidth: 400,
     alignSelf: 'center',
+  },
+  modal: {
+    borderRadius: 12,
+    overflow: 'visible',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    paddingVertical: 8,
+    padding: 16,
     borderBottomWidth: 1,
   },
   modalTitle: {
     fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 0,
+    fontSize: 18,
+  },
+  modalScroll: {
+    padding: 16,
+    maxHeight: 500,
   },
   modalSubtitle: {
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  modalHelper: {
-    fontSize: 14,
-    marginBottom: 16,
+    marginTop: 8,
+    marginBottom: 12,
   },
   input: {
     marginBottom: 16,
     backgroundColor: Colors.dark.input,
+  },
+  dateButton: {
+    marginBottom: 16,
+  },
+  priorityContainer: {
+    marginTop: 8,
+  },
+  submitButtonContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    backgroundColor: Colors.dark.card,
+  },
+  submitButton: {
+    marginVertical: 0,
+    backgroundColor: Colors.dark.primary,
   },
   typeButtons: {
     marginBottom: 12,
@@ -1228,81 +1306,28 @@ const styles = StyleSheet.create({
   flex1: {
     flex: 1,
   },
-  modalButtons: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
+  deleteButton: {
+    marginBottom: 12,
   },
-  editButtons: {
+  confirmModal: {
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  confirmText: {
+    fontSize: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  confirmButtons: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 12,
-    width: '100%',
+  },
+  confirmDeleteButton: {
+    backgroundColor: Colors.dark.error,
   },
   modalButton: {
     minWidth: 100,
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalView: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5
-  },
-  datePickerBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  datePickerModal: {
-    width: 340,
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-      },
-      android: {
-        elevation: 5,
-      },
-    }),
-  },
-  datePickerContainer: {
-    paddingHorizontal: 20,
-  },
-  datePickerFooter: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.dark.border,
-  },
-  datePickerButton: {
-    width: '100%',
-  },
-  booleanProgress: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  booleanButton: {
-    flex: 1,
-  },
-  updateProgressButton: {
-    marginTop: 12,
   },
   progressModal: {
     position: 'absolute',
@@ -1330,47 +1355,12 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  modalScroll: {
-    padding: 16,
-    paddingTop: 8,
+  scrollContent: {
+    paddingBottom: 120,
   },
-  singleButtonContainer: {
-    padding: 20,
-    paddingTop: 0,
-  },
-  fullWidthButton: {
-    width: '100%',
-  },
-  centerButtons: {
-    flexDirection: 'row',
+  emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
-    gap: 12,
-    width: '100%',
-  },
-  deleteButton: {
-    marginBottom: 12,
-  },
-  confirmModal: {
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
-  confirmText: {
-    fontSize: 16,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  confirmButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-  },
-  confirmDeleteButton: {
-    backgroundColor: Colors.dark.error,
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-    paddingTop: 12,
   },
   logEntry: {
     padding: 16,
@@ -1410,26 +1400,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 20,
   },
-  submitButtonContainer: {
-    padding: 16,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.dark.border,
-    backgroundColor: Colors.dark.card,
-  },
-  submitButton: {
-    marginVertical: 8,
-    backgroundColor: Colors.dark.primary,
-  },
   completionStatus: {
     fontSize: 12,
     marginTop: 4,
   },
-  scrollContent: {
-    paddingBottom: 120,
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+    paddingTop: 12,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  datePickerContainer: {
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.dark.border,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  datePickerDoneButton: {
+    margin: 8,
+  },
+  priorityButton: {
+    marginBottom: 16,
   },
 }) 
