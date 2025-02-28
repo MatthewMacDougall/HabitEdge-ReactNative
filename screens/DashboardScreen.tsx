@@ -226,44 +226,46 @@ export default function DashboardScreen() {
         </View>
 
         {recentEntries.length > 0 ? (
-          recentEntries.map(entry => {
-            const rating = getMainRating(entry)
-            const config = entryTypeConfigs[entry.type]
-            return (
-              <Card 
-                key={entry.id} 
-                style={styles.entryCard}
-                onPress={() => router.push({
-                  pathname: '/journal/[id]',
-                  params: { id: entry.id.toString() }
-                })}
-              >
-                <Card.Content>
-                  <View style={styles.entryHeader}>
-                    <View style={styles.entryInfo}>
-                      <Text style={styles.entryTitle}>
-                        {entry.title || config.label}
-                      </Text>
-                      <Text style={styles.entryDate}>
-                        {format(new Date(entry.date), 'MMM d, yyyy')}
-                      </Text>
+          <View style={styles.entriesContainer}>
+            {recentEntries.map(entry => {
+              const rating = getMainRating(entry)
+              const config = entryTypeConfigs[entry.type]
+              return (
+                <Card 
+                  key={entry.id} 
+                  style={styles.entryCard}
+                  onPress={() => router.push({
+                    pathname: '/journal/[id]',
+                    params: { id: entry.id.toString() }
+                  })}
+                >
+                  <Card.Content>
+                    <View style={styles.entryHeader}>
+                      <View style={styles.entryInfo}>
+                        <Text style={styles.entryTitle}>
+                          {entry.title || config.label}
+                        </Text>
+                        <Text style={styles.entryDate}>
+                          {format(new Date(entry.date), 'MMM d, yyyy')}
+                        </Text>
+                      </View>
+                      <View style={styles.ratingContainer}>
+                        <Text style={styles.performanceLabel}>
+                          {config.metrics[0]?.label || 'Rating'}
+                        </Text>
+                        <Text style={[
+                          styles.performanceValue,
+                          { color: getRatingColor(rating) }
+                        ]}>
+                          {rating.toFixed(1)}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={styles.ratingContainer}>
-                      <Text style={styles.performanceLabel}>
-                        {config.metrics[0]?.label || 'Rating'}
-                      </Text>
-                      <Text style={[
-                        styles.performanceValue,
-                        { color: getRatingColor(rating) }
-                      ]}>
-                        {rating.toFixed(1)}
-                      </Text>
-                    </View>
-                  </View>
-                </Card.Content>
-              </Card>
-            )
-          })
+                  </Card.Content>
+                </Card>
+              )
+            })}
+          </View>
         ) : (
           <Text style={styles.emptyText}>No entries yet</Text>
         )}
@@ -389,10 +391,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   entryCard: {
-    padding: 12,
-    marginBottom: 8,
+    marginBottom: 12,
     borderRadius: 8,
-    backgroundColor: Colors.dark.card,
+    backgroundColor: Colors.dark.input,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
   },
   entryHeader: {
     flexDirection: 'row',
@@ -473,15 +479,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   recentEntries: {
     marginBottom: 24,
+    padding: 0,
   },
   cardPadding: {
     padding: 16,
   },
   scrollContent: {
     paddingBottom: 100,
+  },
+  entriesContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
 }) 
