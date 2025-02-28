@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Card, List, Avatar, Surface } from 'react-native-paper';
+import { Text, Card, List, Avatar, Surface, Button } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -201,6 +201,41 @@ export default function ProfileScreen() {
           />
         </List.Section>
       </Card>
+
+      {/* After the other menu items in the Card */}
+      <Card style={[SharedStyles.card, { backgroundColor: colors.card, marginTop: 16 }]}>
+        <Card.Content style={styles.feedbackContent}>
+          <View style={styles.feedbackPrompt}>
+            <MaterialCommunityIcons 
+              name="message-text-outline" 
+              size={24} 
+              color={colors.primary} 
+            />
+            <View style={styles.feedbackTextContainer}>
+              <Text 
+                variant="titleMedium" 
+                style={{ color: colors.text }}
+              >
+                Help Us Improve
+              </Text>
+              <Text 
+                variant="bodyMedium" 
+                style={{ color: colors.textSecondary }}
+              >
+                We'd love to hear your feedback on the app. Your input helps us make the experience better for everyone.
+              </Text>
+            </View>
+          </View>
+          <Button 
+            mode="outlined"
+            onPress={() => {/* TODO: Add feedback form */}}
+            style={styles.feedbackButton}
+            labelStyle={{ color: colors.primary }}
+          >
+            Provide Feedback
+          </Button>
+        </Card.Content>
+      </Card>
     </ScrollView>
   );
 }
@@ -242,5 +277,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     textAlign: 'center',
+  },
+  feedbackContent: {
+    padding: 16,
+  },
+  feedbackPrompt: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 8,
+  },
+  feedbackTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  feedbackButton: {
+    marginTop: 4,
+    alignSelf: 'flex-end',
   },
 }); 
